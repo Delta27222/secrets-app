@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const session = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
 
   // Rutas protegidas que requieren autenticación
-  const protectedPaths = ["/secretos"]
+  const protectedPaths = ["/organizations", "/projects"]
 
   const isProtectedPath = protectedPaths.some(
     (path) => req.nextUrl.pathname === path || req.nextUrl.pathname.startsWith(`${path}/`),
