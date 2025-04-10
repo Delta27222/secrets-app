@@ -1,6 +1,5 @@
 import { getServerSession } from "next-auth/next"
 import { redirect } from "next/navigation"
-import { PrismaClient } from "@prisma/client"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
