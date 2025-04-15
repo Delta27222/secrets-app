@@ -137,7 +137,7 @@ export default function ProjectDetailPage() {
             {project?.description && <p className="text-muted-foreground mt-1">{project.description}</p>}
           </div>
           <div className="flex space-x-3">
-            {project && userProjectRole && userOrgRole && (
+            {project && (userProjectRole || userOrgRole) && (
               <ProjectSettings
                 project={project}
                 userProjectRole={userProjectRole}
