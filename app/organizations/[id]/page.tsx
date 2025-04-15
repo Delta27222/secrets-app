@@ -153,7 +153,7 @@ export default function OrganizationPage() {
           <TabsContent value="projects" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Mis Proyectos</h2>
-              {(userRole === "owner" || userRole === "admin" || userRole === "ADMIN") && (
+              {(userRole === "owner" || userRole === "admin" ) && (
                 <CreateProjectForm
                   organizationId={params.id as string}
                   onProjectCreated={() => fetchData(params.id as string)}
@@ -166,11 +166,16 @@ export default function OrganizationPage() {
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-medium mb-2">No tienes acceso a ningún proyecto</h3>
                 <p className="text-muted-foreground mb-6">
-                  Crea un nuevo proyecto o solicita acceso a proyectos existentes.
+                  {userRole === "owner" || userRole === "admin"
+                    ? "Crea un nuevo proyecto o solicita acceso a proyectos existentes."
+                    : "Solicita acceso a proyectos existentes o contacta a un administrador para crear nuevos proyectos."}
                 </p>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" /> Crear Proyecto
-                </Button>
+                {(userRole === "owner" || userRole === "admin") && (
+                  <CreateProjectForm
+                    organizationId={params.id as string}
+                    onProjectCreated={() => fetchData(params.id as string)}
+                  />
+                )}
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
