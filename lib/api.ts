@@ -76,6 +76,7 @@ export interface Project {
   name: string
   description?: string
   organizationId: string
+  tags?: Record<string, string>
   createdAt: string
   updatedAt: string
 }
@@ -87,6 +88,7 @@ export interface ProjectDetail {
   slug: string
   description?: string
   organization_id: string
+  tags?: Record<string, string>
   createdAt: string
   updatedAt: string
 }
@@ -390,14 +392,15 @@ export class ApiClient {
     return response.json()
   }
 
-  async updateProject(projectId: string, data: { name: string }): Promise<ProjectDetail> {
-    console.log(`Actualizando proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+  async updateProject(projectId: string, data: { name: string; tags?: Record<string, string> }): Promise<ProjectDetail> {
+    console.log(`Actualizando proyecto ${projectId} con token:`, this.token ? "presente" : "ausente", data.tags)
     const response = await fetchWithAuth(`/v1/projects/${projectId}`, this.token, this.tokenType, {
       method: "PUT",
       body: JSON.stringify({
         project: {
           name: data.name,
-          slug: "", // No enviamos el slug como solicitado
+          slug: "", 
+          tags: data.tags,
         },
       }),
     })
@@ -536,8 +539,13 @@ export class ApiClient {
     }
   }
 
-  async createProject(data: { name: string; slug: string; organization_id: string }): Promise<ProjectDetail> {
-    console.log(`Creando proyecto con token:`, this.token ? "presente" : "ausente")
+  async createProject(data: {
+        name: string;
+        slug: string; 
+        organization_id: string;
+        tags?: Record<string, string>
+   }): Promise<ProjectDetail> {
+    console.log(`Creando proyecto con token:`, this.token ? "presente" : "ausente", "tags", data.tags)
     const response = await fetchWithAuth(`/v1/projects`, this.token, this.tokenType, {
       method: "POST",
       body: JSON.stringify({
