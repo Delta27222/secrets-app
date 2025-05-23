@@ -134,12 +134,6 @@ export default function OrganizationPage() {
             {organization?.description && <p className="text-muted-foreground mt-1">{organization.description}</p>}
           </div>
           <div className="flex space-x-3">
-            <Button asChild variant="outline">
-              <Link href={`/organizaciones/${params.id}/secretos`}>
-                <Lock className="mr-2 h-4 w-4" />
-                Ver Secretos
-              </Link>
-            </Button>
             {organization && userRole && (
               <OrganizationSettings
                 organization={organization}
