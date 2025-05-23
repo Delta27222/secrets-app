@@ -497,6 +497,19 @@ export class ApiClient {
     return response.json()
   }
 
+  async addProjectMembers(projectId: string, data: { project: string; user: string[]; role: string }): Promise<any> {
+    const response = await fetchWithAuth(`/v1/projects/${projectId}/addMembers`, this.token, this.tokenType, {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en addProjectMembers:", response.status, errorText)
+      throw new Error(`Error al añadir miembros al proyecto: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
   async updateProjectMember(memberId: string, role: string): Promise<ProjectMember> {
     console.log(`Actualizando rol del miembro ${memberId} con token:`, this.token ? "presente" : "ausente")
     const response = await fetchWithAuth(`/v1/projects/members/${memberId}`, this.token, this.tokenType, {
