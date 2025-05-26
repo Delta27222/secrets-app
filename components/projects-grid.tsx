@@ -9,7 +9,7 @@ import { FolderKanban, Users, Folder, User, ChevronDown, ChevronRight, ChevronUp
 import Link from "next/link"
 import type { Project } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { motion, AnimatePresence } from "framer-motion"
+// import { motion, AnimatePresence } from "framer-motion"
 
 interface ProjectsGridProps {
   projects: Project[]
@@ -240,22 +240,22 @@ export function ProjectsGrid({ projects, organizationId }: ProjectsGridProps) {
             </div>
 
             {/* Contenido del grupo (colapsable) */}
-            <AnimatePresence>
+            <div>
               {expandedGroups[group.name] && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                <div
+                  // initial={{ height: 0, opacity: 0 }}
+                  // animate={{ height: "auto", opacity: 1 }}
+                  // exit={{ height: 0, opacity: 0 }}
+                  // transition={{ duration: 0.3 }}
                 >
                   <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {group.projects.map((project) => (
                       <ProjectCard key={`project-${project._id}`} project={project} />
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           </div>
         ))}
       </div>
