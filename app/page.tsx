@@ -111,7 +111,7 @@ export default function Home() {
                   <Card key={membership._id} className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <CardTitle>{membership.organization.name}</CardTitle>
-                      <CardDescription>{membership.organization.description || "Sin descripción"}</CardDescription>
+                      {/* <CardDescription>{membership.organization.description || "Sin descripción"}</CardDescription> */}
                     </CardHeader>
                     <CardContent>
                       <div className="flex items-center text-sm text-muted-foreground mb-2">

@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Settings, Trash2 } from "lucide-react"
+import { Settings, Trash2, Plus, X } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 interface ProjectSettingsProps {
@@ -48,11 +48,66 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
   const [isDeleting, setIsDeleting] = useState(false)
   const [formData, setFormData] = useState({
     name: project.name,
+    tags: {
+      folder: project.tags?.folder || "",
+      team: project.tags?.team || "",
+      ...Object.fromEntries(Object.entries(project.tags || {}).filter(([key]) => key !== "folder" && key !== "team")),
+    } as Record<string, string>,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleTagChange = (key: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: {
+        ...prev.tags,
+        [key]: value,
+      } as Record<string, string>,
+    }))
+  }
+
+  const addCustomTag = () => {
+    const newKey = `tag_${Date.now()}`
+    setFormData((prev) => ({
+      ...prev,
+      tags: {
+        ...prev.tags,
+        [newKey]: "",
+      },
+    }))
+  }
+
+  const removeCustomTag = (key: string) => {
+    if (key === "folder" || key === "team") return // No permitir eliminar tags requeridos
+
+    setFormData((prev) => {
+      const newTags = { ...prev.tags } as Record<string, string>
+      delete newTags[key]
+      return {
+        ...prev,
+        tags: newTags,
+      }
+    })
+  }
+
+  const updateTagKey = (oldKey: string, newKey: string) => {
+    if (oldKey === "folder" || oldKey === "team") return // No permitir cambiar keys requeridos
+    if (newKey === "folder" || newKey === "team") return // No permitir usar keys reservados
+
+    setFormData((prev) => {
+      const newTags = { ...prev.tags } as Record<string, string>
+      const value = newTags[oldKey]
+      delete newTags[oldKey]
+      newTags[newKey] = value
+      return {
+        ...prev,
+        tags: newTags,
+      }
+    })
   }
 
   const handleUpdateProject = async (e: React.FormEvent) => {
@@ -61,8 +116,15 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
 
     try {
       setIsSubmitting(true)
+
+      // Filtrar tags vacíos
+      const filteredTags = Object.fromEntries(
+        Object.entries(formData.tags).filter(([key, value]) => key.trim() !== "" && value.trim() !== ""),
+      )
+
       await api.updateProject(project._id, {
         name: formData.name,
+        tags: filteredTags,
       })
       setEditDialogOpen(false)
       onProjectUpdated()
@@ -133,13 +195,13 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
               Configuración
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Editar Proyecto</DialogTitle>
-              <DialogDescription>Actualiza la información de tu proyecto.</DialogDescription>
+              <DialogDescription>Actualiza la información y tags de tu proyecto.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleUpdateProject}>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-6 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="name">Nombre</Label>
                   <Input
@@ -150,6 +212,71 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
                     placeholder="Nombre del proyecto"
                     required
                   />
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Tags del Proyecto</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addCustomTag}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Añadir Tag
+                    </Button>
+                  </div>
+
+                  {/* Tags requeridos */}
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="folder-tag" className="text-sm font-medium">
+                          Proyecto <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="folder-tag"
+                          value={formData.tags.folder}
+                          onChange={(e) => handleTagChange("folder", e.target.value)}
+                          placeholder="ej. Spotify"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="team-tag" className="text-sm font-medium">
+                          Equipo <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="team-tag"
+                          value={formData.tags.team}
+                          onChange={(e) => handleTagChange("team", e.target.value)}
+                          placeholder="ej. Mobile Flutter"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tags personalizados */}
+                    {Object.entries(formData.tags)
+                      .filter(([key]) => key !== "folder" && key !== "team")
+                      .map(([key, value]) => (
+                        <div key={key} className="grid grid-cols-2 gap-3 items-end">
+                          <div>
+                            <Label className="text-sm font-medium">Nombre del Tag</Label>
+                            <Input
+                              value={key}
+                              onChange={(e) => updateTagKey(key, e.target.value)}
+                              placeholder="Nombre del tag"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              value={value}
+                              onChange={(e) => handleTagChange(key, e.target.value)}
+                              placeholder="Valor del tag"
+                              className="flex-1"
+                            />
+                            <Button type="button" variant="outline" size="icon" onClick={() => removeCustomTag(key)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
               <DialogFooter>

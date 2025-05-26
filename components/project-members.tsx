@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useApi } from "@/components/api-provider"
 import type { ProjectMember, OrganizationMembershipDetail } from "@/lib/api"
@@ -26,11 +24,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { UserPlus, UserX, User, MoreHorizontal, UserCog, Check, ChevronsUpDown } from "lucide-react"
+import { UserPlus, UserX, User, MoreHorizontal, UserCog } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface ProjectMembersProps {
   projectId: string
@@ -46,8 +50,8 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false)
   const [editMemberDialogOpen, setEditMemberDialogOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<ProjectMember | null>(null)
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [addMemberForm, setAddMemberForm] = useState({
-    selectedUsers: [] as string[],
     role: "viewer" as "admin" | "collab" | "viewer",
   })
   const [editMemberForm, setEditMemberForm] = useState({
@@ -55,7 +59,6 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [organizationId, setOrganizationId] = useState<string | null>(null)
-  const [openMultiSelect, setOpenMultiSelect] = useState(false)
 
   useEffect(() => {
     fetchMembers()
@@ -107,34 +110,37 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
   const handleOpenAddMemberDialog = () => {
     fetchOrganizationMembers()
     setAddMemberDialogOpen(true)
-    setAddMemberForm({
-      selectedUsers: [],
-      role: "viewer",
-    })
+    setSelectedUserIds([]) // Reset selected users when dialog opens
   }
 
-  const handleAddMembers = async (e: React.FormEvent) => {
+  const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (addMemberForm.selectedUsers.length === 0 || !projectId) return
+    if (selectedUserIds.length === 0 || !projectId) return
 
     try {
       setIsSubmitting(true)
-      await api.addProjectMembers(projectId, {
-        project: projectId,
-        user: addMemberForm.selectedUsers,
-        role: addMemberForm.role,
-      })
+      
+      // Add all selected users
+      await Promise.all(selectedUserIds.map(userId => 
+        api.addProjectMember(projectId, {
+          project: projectId,
+          user: userId,
+          role: addMemberForm.role,
+        })
+      ));
+      
       setAddMemberDialogOpen(false)
+      setSelectedUserIds([])
       setAddMemberForm({
-        selectedUsers: [],
         role: "viewer",
       })
       fetchMembers()
       toast({
         title: "Miembros añadidos",
-        description: `${addMemberForm.selectedUsers.length} miembro(s) han sido añadidos al proyecto correctamente.`,
+        description: `Se han añadido ${selectedUserIds.length} miembros al proyecto correctamente.`,
       })
-    } catch (err) {
+    } 
+    catch (err) {
       console.error("Error adding project members:", err)
       toast({
         title: "Error",
@@ -215,41 +221,12 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
     return members.some((member) => member.user._id === userId)
   }
 
-  // Función para manejar la selección/deselección de usuarios
   const toggleUserSelection = (userId: string) => {
-    setAddMemberForm((prev) => {
-      const isSelected = prev.selectedUsers.includes(userId)
-      if (isSelected) {
-        // Si ya está seleccionado, lo quitamos
-        return {
-          ...prev,
-          selectedUsers: prev.selectedUsers.filter((id) => id !== userId),
-        }
-      } else {
-        // Si no está seleccionado, lo añadimos
-        return {
-          ...prev,
-          selectedUsers: [...prev.selectedUsers, userId],
-        }
-      }
-    })
-  }
-
-  // Obtener los nombres de los usuarios seleccionados para mostrar
-  const getSelectedUsersText = () => {
-    if (addMemberForm.selectedUsers.length === 0) {
-      return "Seleccionar usuarios"
-    }
-
-    const selectedUsers = organizationMembers.filter((member) =>
-      addMemberForm.selectedUsers.includes(member.user?._id || ""),
+    setSelectedUserIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
     )
-
-    if (selectedUsers.length <= 2) {
-      return selectedUsers.map((member) => member.user?.displayName || member.user?.username || member.email).join(", ")
-    }
-
-    return `${selectedUsers.length} usuarios seleccionados`
   }
 
   if (loading) {
@@ -273,17 +250,17 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
           <DialogTrigger asChild>
             <Button onClick={handleOpenAddMemberDialog}>
               <UserPlus className="mr-2 h-4 w-4" />
-              Añadir Miembros
+              Añadir Miembro
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Añadir Miembros al Proyecto</DialogTitle>
               <DialogDescription>
-                Selecciona los miembros de la organización y asígnales un rol en este proyecto.
+                Selecciona miembros de la organización y asígnales un rol en este proyecto.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddMembers}>
+            <form onSubmit={handleAddMember}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="users">Miembros de la Organización</Label>
@@ -293,65 +270,40 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
                       <span>Cargando miembros...</span>
                     </div>
                   ) : (
-                    <Popover open={openMultiSelect} onOpenChange={setOpenMultiSelect}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={openMultiSelect}
-                          className="justify-between w-full"
-                        >
-                          {getSelectedUsersText()}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Buscar miembro..." />
-                          <CommandList className="max-h-48">
-                            <CommandEmpty>No se encontraron miembros.</CommandEmpty>
-                            <CommandGroup className="max-h-48 overflow-auto">
-                              {organizationMembers.length === 0 ? (
-                                <div className="p-2 text-center text-sm text-muted-foreground">
-                                  No hay miembros disponibles
-                                </div>
-                              ) : (
-                                organizationMembers.map((member) => {
-                                  const userId = member.user?._id || ""
-                                  const isDisabled = isAlreadyMember(userId)
-                                  const isSelected = addMemberForm.selectedUsers.includes(userId)
-
-                                  return (
-                                    <CommandItem
-                                      key={member._id}
-                                      value={`${member.user?.displayName || member.user?.username || member.email} ${member.email}`}
-                                      disabled={isDisabled}
-                                      onSelect={() => {
-                                        if (!isDisabled) {
-                                          toggleUserSelection(userId)
-                                        }
-                                      }}
-                                      className={cn(isDisabled && "opacity-50", "flex items-center justify-between")}
-                                    >
-                                      <div>
-                                        {member.user?.displayName || member.user?.username || member.email}
-                                        {isDisabled && " (Ya es miembro)"}
-                                      </div>
-                                      {isSelected && !isDisabled && <Check className="h-4 w-4" />}
-                                    </CommandItem>
-                                  )
-                                })
+                    <Command className="rounded-lg border">
+                      <CommandInput placeholder="Buscar miembros..." />
+                      <CommandEmpty>No se encontraron miembros.</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-y-auto">
+                        {organizationMembers.map((member) => {
+                          const userId = member.user?._id || ""
+                          const isDisabled = isAlreadyMember(userId)
+                          const isSelected = selectedUserIds.includes(userId)
+                          
+                          return (
+                            <CommandItem
+                              key={member._id}
+                              value={member.user?.displayName || member.user?.username || member.email}
+                              onSelect={() => !isDisabled && toggleUserSelection(userId)}
+                              className={cn(
+                                "cursor-pointer",
+                                isDisabled && "opacity-50 cursor-not-allowed"
                               )}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                  {addMemberForm.selectedUsers.length > 0 && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {addMemberForm.selectedUsers.length} usuario(s) seleccionado(s)
-                    </div>
+                            >
+                              <div className={cn(
+                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                              )}>
+                                <Check className={cn("h-4 w-4")} />
+                              </div>
+                              <span>
+                                {member.user?.displayName || member.user?.username || member.email}
+                                {isDisabled && " (Ya es miembro)"}
+                              </span>
+                            </CommandItem>
+                          )
+                        })}
+                      </CommandGroup>
+                    </Command>
                   )}
                 </div>
                 <div className="grid gap-2">
@@ -377,9 +329,17 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isSubmitting || addMemberForm.selectedUsers.length === 0}>
-                  {isSubmitting ? "Añadiendo..." : "Añadir Miembros"}
-                </Button>
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedUserIds.length} {selectedUserIds.length === 1 ? 'miembro seleccionado' : 'miembros seleccionados'}
+                  </span>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || selectedUserIds.length === 0}
+                  >
+                    {isSubmitting ? "Añadiendo..." : "Añadir Miembros"}
+                  </Button>
+                </div>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -397,7 +357,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
           <div className="grid grid-cols-12 gap-4 p-4 font-medium text-sm text-muted-foreground border-b">
             <div className="col-span-5">Usuario</div>
             <div className="col-span-3">Rol</div>
-            <div className="col-span-3">Fecha de Adición</div>
+            <div className="col-span-3"></div>
             <div className="col-span-1">Acciones</div>
           </div>
           {members.map((member) => (
@@ -413,7 +373,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
               </div>
               <div className="col-span-3">{getRoleBadge(member.role)}</div>
               <div className="col-span-3 text-sm text-muted-foreground">
-                {new Date(member.createdAt).toLocaleDateString()}
+                {""}
               </div>
               <div className="col-span-1">
                 <DropdownMenu>

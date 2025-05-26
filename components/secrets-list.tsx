@@ -70,7 +70,7 @@ export function SecretsList({ secrets, onUpdate, organizationId }: SecretsListPr
         <Card key={secret._id}>
           <CardHeader>
             <CardTitle>{secret.name}</CardTitle>
-            <CardDescription>{secret.description || "Sin descripción"}</CardDescription>
+            {/* <CardDescription>{secret.description || "Sin descripción"}</CardDescription> */}
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
