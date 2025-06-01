@@ -101,6 +101,10 @@ export interface Environment {
   secrets: Record<string, string>
   createdAt: string
   updatedAt: string
+  render_token?: string;
+  render_server_id?: string;
+  vercel_token?: string;
+  vercel_server_id?: string;
 }
 
 export interface EnvironmentsResponse {
@@ -587,6 +591,47 @@ export class ApiClient {
     }
     return response.json()
   }
+
+  //Render API methods
+  async getRenderInfo(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo información de Render para el proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/projects/${projectId}/${slug}/render_info`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getRenderInfo:", response.status, errorText)
+      throw new Error(`Error al obtener información de Render: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async updateRenderInfo(environmentId: string, render_server_id: string, render_token: string): Promise<any> {
+    console.log(`Actualizando información de Render ${environmentId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/environments/${environmentId}/render`, this.token, this.tokenType, {
+      method: "PATCH",
+      body: JSON.stringify({ render_data: { render_server_id, render_token } }),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en updateRenderInfo:", response.status, errorText)
+      throw new Error(`Error al actualizar información de Render: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+
+  async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
+    console.log(`Sincronizando secretos con Render ambiente ${slug} del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/sync_to_render/${projectId}/${slug}`, this.token, this.tokenType)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en syncSecretsToRender:", response.status, errorText)
+      throw new Error(`Error al sincronizar secretos con Render: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+
 
 }
 
