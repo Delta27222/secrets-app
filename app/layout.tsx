@@ -2,6 +2,7 @@ import type React from "react"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
+import { ProjectEnvironmentsProvider } from "@/context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -19,12 +20,12 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ProjectEnvironmentsProvider>
+            {children}
+          </ProjectEnvironmentsProvider>
+        </AuthProvider>
       </body>
     </html>
   )
 }
-
-
-
-import './globals.css'
