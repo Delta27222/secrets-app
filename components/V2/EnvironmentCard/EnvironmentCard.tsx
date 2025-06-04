@@ -69,15 +69,18 @@ export function EnvironmentCard({ environment }: EnvironmentCardProps) {
                     <button
                       type="button"
                       onClick={() => handleOpenDialog('render')}
-                      className="p-0 bg-transparent border-none transition-transform duration-200 ease-in-out hover:scale-110"
+                      className="p-1 rounded-sm bg-transparent transition-transform duration-200 ease-in-out hover:scale-110  "
                       tabIndex={0}
                       aria-label="Ver detalles de Render"
                     >
-                      <RenderIsotipoIcon
-                        className={`size-5 cursor-pointer ${
-                          render ? "opacity-100" : "opacity-40"
-                        }`}
-                      />
+                      <div className="relative">
+                        <span className="absolute scale-40 -top-3 -left-2">{render ? '✔️': '❌'}</span>
+                        <RenderIsotipoIcon
+                          className={`size-5 cursor-pointer ${
+                            render ? "opacity-100" : "opacity-40"
+                          }`}
+                        />
+                      </div>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -91,15 +94,18 @@ export function EnvironmentCard({ environment }: EnvironmentCardProps) {
                     <button
                       type="button"
                       onClick={() => handleOpenDialog('vercel')}
-                      className="p-0 bg-transparent border-none transition-transform duration-200 ease-in-out hover:scale-110"
+                      className="p-1 rounded-sm bg-transparent transition-transform duration-200 ease-in-out hover:scale-110  "
                       tabIndex={0}
-                      aria-label="Ver detalles de Render"
+                      aria-label="Ver detalles de Vercel"
                     >
-                      <VercelIsotipoIcon
-                        className={`size-5 cursor-pointer ${
-                          vercel ? "opacity-100" : "opacity-40"
-                        }`}
-                      />
+                      <div className="relative">
+                        <span className="absolute scale-40 -top-3 -left-2">{vercel ? '✔️': '❌'}</span>
+                        <VercelIsotipoIcon
+                          className={`size-5 cursor-pointer ${
+                            vercel ? "opacity-100" : "opacity-40"
+                          }`}
+                        />
+                      </div>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
