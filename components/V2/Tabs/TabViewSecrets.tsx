@@ -1,14 +1,9 @@
 "use client";
 import React from "react";
-import {
-  Eye,
-  EyeOff,
-  Copy,
-  Check,
-} from "lucide-react";
+import { Eye, EyeOff, Copy, Check, Save, FolderSync } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
-import { useProjectEnvironments } from "@/hooks";
+import { useProjectEnvironments, useRenderActions } from "@/hooks";
 
 export function TabViewSecrets() {
   const {
@@ -19,6 +14,13 @@ export function TabViewSecrets() {
     handleCopyAllSecrets,
     handleCopySecret,
   } = useProjectEnvironments();
+  const { handleSyncToRender } = useRenderActions();
+
+  const { render_server_id, render_token, vercel_server_id, vercel_token } =
+    selectedEnvironment || {};
+
+  const isRenderEnvironment = render_server_id && render_token;
+  const isVercelEnvironment = vercel_server_id && vercel_token;
 
   return (
     <TabsContent value="view" className="space-y-4">
@@ -52,7 +54,8 @@ export function TabViewSecrets() {
         </div>
       </div>
 
-      {!selectedEnvironment || Object.keys(selectedEnvironment.secrets || {}).length === 0 ? (
+      {!selectedEnvironment ||
+      Object.keys(selectedEnvironment.secrets || {}).length === 0 ? (
         <div className="text-center py-6 bg-muted rounded-md">
           <p className="text-muted-foreground">
             No hay variables configuradas en este ambiente.
@@ -107,6 +110,32 @@ export function TabViewSecrets() {
           </div>
         </div>
       )}
+      <div className="flex flex-row justify-end items-center">
+        {isRenderEnvironment ? (
+          <Button
+            type="button"
+            className="flex items-center gap-2"
+            onClick={(e) => {
+              e.preventDefault();
+              if (
+                selectedEnvironment?.project_id &&
+                selectedEnvironment?.slug
+              ) {
+                handleSyncToRender(e);
+              }
+            }}
+          >
+            <FolderSync className="h-4 w-4" />
+            Sincronizar con Render
+          </Button>
+        ) : null}
+        {isVercelEnvironment ? (
+          <Button type="button" className="flex items-center gap-2">
+            <FolderSync className="h-4 w-4" />
+            Sincronizar con Vercel
+          </Button>
+        ) : null}
+      </div>
     </TabsContent>
   );
 }
