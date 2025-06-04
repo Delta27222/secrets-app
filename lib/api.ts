@@ -619,9 +619,16 @@ export class ApiClient {
   }
 
 
-  async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
+async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
     console.log(`Sincronizando secretos con Render ambiente ${slug} del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
-    const response = await fetchWithAuth(`/v1/sync_to_render/${projectId}/${slug}`, this.token, this.tokenType)
+    const response = await fetchWithAuth(
+      `/v1/sync/render/${projectId}/${slug}`,
+      this.token,
+      this.tokenType,
+      {
+        method: 'POST',
+      }
+    )
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -630,9 +637,6 @@ export class ApiClient {
     }
     return response.json()
   }
-
-
-
 }
 
 // Exportamos una instancia por defecto para uso general
