@@ -14,7 +14,7 @@ export function TabViewSecrets() {
     handleCopyAllSecrets,
     handleCopySecret,
   } = useProjectEnvironments();
-  const { handleSyncToRender } = useRenderActions();
+  const { handleSyncToRender, loading: synToRenderLoading } = useRenderActions();
 
   const { render_server_id, render_token, vercel_server_id, vercel_token } =
     selectedEnvironment || {};
@@ -115,6 +115,7 @@ export function TabViewSecrets() {
           <Button
             type="button"
             className="flex items-center gap-2"
+            disabled={synToRenderLoading}
             onClick={(e) => {
               e.preventDefault();
               if (
@@ -125,14 +126,32 @@ export function TabViewSecrets() {
               }
             }}
           >
-            <FolderSync className="h-4 w-4" />
-            Sincronizar con Render
+            {synToRenderLoading ? (
+              <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Sincronizando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Sincronizar con Render
+              </>
+            )}
           </Button>
         ) : null}
         {isVercelEnvironment ? (
-          <Button type="button" className="flex items-center gap-2">
-            <FolderSync className="h-4 w-4" />
-            Sincronizar con Vercel
+          <Button type="button" className="flex items-center gap-2" disabled={false}>
+            {false ? (
+              <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Sincronizando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Sincronizar con Vercel
+              </>
+            )}
           </Button>
         ) : null}
       </div>
