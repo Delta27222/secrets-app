@@ -11,6 +11,9 @@ export function Header({ user }: { user: any }) {
           Tek Secrets
         </Link>
         <nav className="flex items-center gap-6">
+          <Link href="/docs" className="text-sm font-medium hover:text-primary transition-colors">
+            Documentación CLI
+          </Link>
           {user ? (
             <>
               <UserNav user={user} />
