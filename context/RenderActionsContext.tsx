@@ -2,11 +2,7 @@
 
 import React from "react";
 import { useApi } from "@/components/api-provider";
-import { Environment } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
-import { parseEnvText } from "@/utils/parseEnvText";
-import { useParams } from "next/navigation";
-import { useProjectEnvironments } from "@/hooks";
+import { useNotify, useProjectEnvironments } from "@/hooks";
 
 interface RenderData {
   render_server_id: string;
@@ -53,7 +49,10 @@ type Props = {
 
 export function RenderActionsProvider({ children }: Props) {
   const api = useApi();
-  const { setError, selectedEnvironment } = useProjectEnvironments();
+  const notify = useNotify();
+
+  const { selectedEnvironment, setEnvironmentDetailsOpen } =
+    useProjectEnvironments();
   const [loading, setLoading] = React.useState<boolean>(false);
   const [formData, setFormData] = React.useState<RenderData>({
     render_server_id: "",
@@ -67,9 +66,7 @@ export function RenderActionsProvider({ children }: Props) {
     try {
       setLoading(true);
       if (!selectedEnvironment?._id || !selectedEnvironment?.slug) {
-        setError(
-          "El entorno seleccionado no es válido. Por favor, selecciona un entorno válido."
-        );
+        notify("El entorno seleccionado no es válido.", "error");
         return;
       }
 
@@ -87,9 +84,7 @@ export function RenderActionsProvider({ children }: Props) {
       });
     } catch (err) {
       console.error("Error fetching render data:", err);
-      setError(
-        "No se pudieron cargar los datos de Render. Por favor, intenta de nuevo más tarde."
-      );
+      notify("Error al cargar los datos de Render.", "error");
     } finally {
       setLoading(false);
     }
@@ -100,13 +95,14 @@ export function RenderActionsProvider({ children }: Props) {
     try {
       setLoading(true);
       if (!selectedEnvironment?._id) {
-        setError(
-          "El entorno seleccionado no es válido. Por favor, selecciona un entorno válido."
-        );
+        notify("El entorno seleccionado no es válido.", "error");
         return;
       }
       if (!formData.render_server_id || !formData.render_token) {
-        setError("Por favor, completa el Service Id y el Api Key de Render.");
+        notify(
+          "Por favor, completa el Service Id y el Api Key de Render.",
+          "error"
+        );
         return;
       }
       const data = await api.updateRenderInfo(
@@ -115,14 +111,12 @@ export function RenderActionsProvider({ children }: Props) {
         formData.render_token
       );
       if (data) {
-        toast({
-          title: "Sincronización exitosa",
-          description: "Los datos de Render se han actualizado correctamente.",
-        });
+        notify("Datos de Render actualizados.", "success");
+        setEnvironmentDetailsOpen(false);
       }
     } catch (err) {
-      console.error("Error al sincronizar:", err);
-      setError("Hubo un error al actualizar los datos de Render.");
+      console.error("Error al sincronizar datos de Render:", err);
+      notify("Error al actualizar los datos de Render.", "error");
     } finally {
       setLoading(false);
     }
@@ -133,9 +127,7 @@ export function RenderActionsProvider({ children }: Props) {
     try {
       setLoading(true);
       if (!selectedEnvironment?._id) {
-        setError(
-          "El entorno seleccionado no es válido. Por favor, selecciona un entorno válido."
-        );
+        notify("El entorno seleccionado no es válido.", "error");
         return;
       }
       const data = await api.syncSecretsToRender(
@@ -143,14 +135,14 @@ export function RenderActionsProvider({ children }: Props) {
         selectedEnvironment.slug
       );
       if (data.status_code === 200) {
-        toast({
-          title: "Sincronización exitosa",
-          description: "Los nuevos secretos se han sincronizado con Render.",
-        });
+        notify(
+          "Secretos sincronizados con Render.",
+          "success"
+        );
       }
     } catch (err) {
       console.error("Error al sincronizar:", err);
-      setError("Hubo un error al sincronizar con Render.");
+      notify("Hubo un error al sincronizar con Render.", "error");
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React from "react"
 import { useRouter } from "next/navigation"
 import { useApi } from "@/components/api-provider"
 import type { ProjectDetail } from "@/lib/api"
@@ -30,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Settings, Trash2, Plus, X } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { useNotify } from "@/hooks"
 
 interface ProjectSettingsProps {
   project: ProjectDetail
@@ -42,11 +40,12 @@ interface ProjectSettingsProps {
 export function ProjectSettings({ project, userProjectRole, userOrgRole, onProjectUpdated }: ProjectSettingsProps) {
   const router = useRouter()
   const api = useApi()
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [formData, setFormData] = useState({
+  const notify = useNotify();
+  const [editDialogOpen, setEditDialogOpen] = React.useState<boolean>(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState<boolean>(false)
+  const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false)
+  const [isDeleting, setIsDeleting] = React.useState<boolean>(false)
+  const [formData, setFormData] = React.useState({
     name: project.name,
     tags: {
       folder: project.tags?.folder || "",
@@ -128,17 +127,10 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
       })
       setEditDialogOpen(false)
       onProjectUpdated()
-      toast({
-        title: "Proyecto actualizado",
-        description: "La información del proyecto ha sido actualizada correctamente.",
-      })
+      notify("Proyecto actualizado correctamente.", "success");
     } catch (err) {
       console.error("Error updating project:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el proyecto. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo actualizar el proyecto. Por favor, intenta de nuevo más tarde.", "error");
     } finally {
       setIsSubmitting(false)
     }
@@ -149,21 +141,14 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
       setIsDeleting(true)
       await api.deleteProject(project._id)
       setDeleteDialogOpen(false)
-      toast({
-        title: "Proyecto eliminado",
-        description: "El proyecto ha sido eliminado correctamente.",
-      })
+      notify("Proyecto eliminado correctamente.", "success");
       // Redirigir a la página de la organización
       setTimeout(() => {
         router.push(`/organizations/${project.organization_id}`)
       }, 500)
     } catch (err) {
       console.error("Error deleting project:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el proyecto. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo eliminar el proyecto. Por favor, intenta de nuevo más tarde.", "error");
       setDeleteDialogOpen(false)
     } finally {
       setIsDeleting(false)

@@ -1,9 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import React from "react"
 import { useApi } from "@/components/api-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Plus, X } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { useNotify } from "@/hooks"
 
 interface CreateProjectFormProps {
   organizationId: string
@@ -26,11 +24,11 @@ interface CreateProjectFormProps {
 }
 
 export function CreateProjectForm({ organizationId, onProjectCreated }: CreateProjectFormProps) {
-  const router = useRouter()
   const api = useApi()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
+  const notify = useNotify();
+  const [dialogOpen, setDialogOpen] = React.useState<boolean>(false)
+  const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false)
+  const [formData, setFormData] = React.useState({
     name: "",
     slug: "",
     tags: {
@@ -131,17 +129,10 @@ export function CreateProjectForm({ organizationId, onProjectCreated }: CreatePr
         },
       })
       onProjectCreated()
-      toast({
-        title: "Proyecto creado",
-        description: "El proyecto ha sido creado correctamente.",
-      })
+      notify("Proyecto creado correctamente.", "success");
     } catch (err) {
       console.error("Error creating project:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo crear el proyecto. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("Error al crear el proyecto. Por favor, intenta de nuevo.", "error");
     } finally {
       setIsSubmitting(false)
     }

@@ -2,7 +2,11 @@ import type React from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
-import { ProjectEnvironmentsProvider, RenderActionsProvider } from "@/context";
+import {
+  ProjectEnvironmentsProvider,
+  RenderActionsProvider,
+  ToastContextProvider,
+} from "@/context";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,9 +25,12 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
-          <ProjectEnvironmentsProvider>
-            <RenderActionsProvider>{children}</RenderActionsProvider>
-          </ProjectEnvironmentsProvider>
+          <ToastContextProvider>
+            <ProjectEnvironmentsProvider>
+              <RenderActionsProvider>{children}</RenderActionsProvider>
+            </ProjectEnvironmentsProvider>
+            <div id="toast" />
+          </ToastContextProvider>
         </AuthProvider>
       </body>
     </html>

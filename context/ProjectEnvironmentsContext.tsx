@@ -6,6 +6,7 @@ import { Environment } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { parseEnvText } from "@/utils/parseEnvText";
 import { useParams } from "next/navigation";
+import { useNotify } from "@/hooks";
 
 export type TProjectEnvironmentsContext = {
   environments: Environment[];
@@ -82,6 +83,7 @@ type Props = {
 export function ProjectEnvironmentsProvider({ children }: Props) {
   const param = useParams();
   const api = useApi();
+  const notify = useNotify();
   const [environments, setEnvironments] = React.useState<Environment[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -142,18 +144,17 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
 
     navigator.clipboard.writeText(allSecrets).then(
       () => {
-        toast({
-          title: "Copiado al portapapeles",
-          description: "Todas las variables han sido copiadas en formato .env",
-        });
+        notify(
+          "Copiado al portapapeles.",
+          "success"
+        );
       },
       (err) => {
         console.error("No se pudo copiar el texto: ", err);
-        toast({
-          title: "Error al copiar",
-          description: "No se pudo copiar las variables al portapapeles.",
-          variant: "destructive",
-        });
+        notify(
+          "Error al copiar las variables de entorno. Por favor, intenta de nuevo.",
+          "error"
+        );
       }
     );
   };
@@ -169,18 +170,14 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
           setCopiedSecrets((prev) => ({ ...prev, [key]: false }));
         }, 2000);
 
-        toast({
-          title: "Copiado al portapapeles",
-          description: `El valor de ${key} ha sido copiado.`,
-        });
+        notify(
+          "Copiado al portapapeles.",
+          "success"
+        );
       },
       (err) => {
         console.error("No se pudo copiar el texto: ", err);
-        toast({
-          title: "Error al copiar",
-          description: "No se pudo copiar el valor al portapapeles.",
-          variant: "destructive",
-        });
+        notify("No se pudo copiar el valor al portapapeles.", "error");
       }
     );
   };
@@ -216,18 +213,16 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
       // Cambiar a la pestaña de visualización
       setActiveTab("view");
 
-      toast({
-        title: "Ambiente actualizado",
-        description:
-          "Las variables de entorno han sido actualizadas correctamente.",
-      });
+      notify(
+        "Las variables de entorno han sido actualizadas correctamente.",
+        "success"
+      );
     } catch (err) {
       console.error("Error updating environment:", err);
-      toast({
-        title: "Error al actualizar",
-        description: "No se pudieron actualizar las variables de entorno.",
-        variant: "destructive",
-      });
+      notify(
+        "No se pudieron actualizar las variables de entorno.",
+        "error"
+      );
     } finally {
       setIsSaving(false);
     }
