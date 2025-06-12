@@ -154,11 +154,8 @@ export default function DocsPage() {
             Herramienta de línea de comandos para gestionar secretos y variables de entorno
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Badge variant="secondary" className="text-sm">
-              Versión 0.1.4.dev0
-            </Badge>
             <Badge variant="outline" className="text-sm">
-              Python &gt;=4.0, &gt;=3.11
+              Python &gt;=3.9
             </Badge>
             <Badge variant="outline" className="text-sm">
               MIT License
@@ -202,21 +199,106 @@ export default function DocsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-semibold mb-2">Instalación desde PyPI</h4>
+                  <h4 className="font-semibold mb-2">Installation from PyPI</h4>
                   <CodeBlock commandId="install">pip install tek-secrets</CodeBlock>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold mb-2">Verificar instalación</h4>
+                  <h4 className="font-semibold mb-2">Verify installation</h4>
                   <CodeBlock commandId="version">tek-secrets --help</CodeBlock>
                 </div>
 
+                <div>
+                  <h4 className="font-semibold mb-2">PATH Configuration (if needed)</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    If you see a warning about the script not being on PATH, you need to add the installation directory
+                    to your system PATH:
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h5 className="font-medium mb-2 flex items-center gap-2">
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">macOS</span>
+                        Add to PATH
+                      </h5>
+                      <CodeBlock commandId="macos-path">
+                        {`# For zsh (default in macOS Catalina and newer)
+echo 'export PATH="$HOME/Library/Python/3.x/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# For bash
+# echo 'export PATH="$HOME/Library/Python/3.x/bin:$PATH"' >> ~/.bashrc
+# source ~/.bashrc
+
+# For other shells
+# echo 'export PATH="$HOME/Library/Python/3.x/bin:$PATH"' >> ~/.profile
+# source ~/.profile`}
+                      </CodeBlock>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Replace 3.x with your Python version (e.g., 3.9, 3.10, 3.11)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Uncomment the lines for your shell. If unsure which shell you're using, run{" "}
+                        <code className="bg-muted px-1 rounded">echo $SHELL</code>
+                      </p>
+                    </div>
+
+                    <div>
+                      <h5 className="font-medium mb-2 flex items-center gap-2">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Linux</span>
+                        Add to PATH
+                      </h5>
+                      <CodeBlock commandId="linux-path">
+                        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc source ~/.bashrc
+                      </CodeBlock>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        For zsh users, use ~/.zshrc instead of <code className="bg-muted px-1 rounded">~/.bashrc</code>
+                      </p>
+                    </div>
+
+                    <div>
+                      <h5 className="font-medium mb-2 flex items-center gap-2">
+                        <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Windows</span>
+                        Add to PATH
+                      </h5>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Option 1: Using Command Prompt (as Administrator)
+                        </p>
+                        <CodeBlock commandId="windows-path-cmd">
+                          setx PATH "%PATH%;%APPDATA%\Python\Python3x\Scripts"
+                        </CodeBlock>
+                        <p className="text-xs text-muted-foreground">
+                          Replace Python3x with your version (e.g., Python39, Python310)
+                        </p>
+
+                        <p className="text-sm text-muted-foreground mt-3">Option 2: Using System Properties</p>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>1. Open System Properties → Advanced → Environment Variables</p>
+                          <p>2. Edit the PATH variable for your user</p>
+                          <p>3. Add the Python Scripts directory shown in the warning</p>
+                          <p>4. Restart your terminal</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                    <h5 className="font-semibold text-yellow-900 mb-2">Note</h5>
+                    <p className="text-yellow-800 text-sm">
+                      After adding to PATH, restart your terminal or command prompt for the changes to take effect. You
+                      can verify the installation works by running{" "}
+                      <code className="bg-yellow-100 px-1 rounded">tek-secrets --help</code>
+                    </p>
+                  </div>
+                </div>
+
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">Requisitos del sistema</h4>
+                  <h4 className="font-semibold text-blue-900 mb-2">System Requirements</h4>
                   <ul className="text-blue-800 space-y-1">
-                    <li>• Python 3.11 o superior</li>
-                    <li>• pip (incluido con Python)</li>
-                    <li>• Conexión a internet para autenticación</li>
+                    <li>• Python 3.9 or higher</li>
+                    <li>• pip (included with Python)</li>
+                    <li>• Internet connection for authentication</li>
                   </ul>
                 </div>
               </CardContent>
