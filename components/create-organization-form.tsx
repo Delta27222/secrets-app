@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Plus } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { useNotify } from "@/hooks"
 
 interface CreateOrganizationFormProps {
   onOrganizationCreated: () => void
@@ -27,6 +27,7 @@ interface CreateOrganizationFormProps {
 export function CreateOrganizationForm({ onOrganizationCreated }: CreateOrganizationFormProps) {
   const router = useRouter()
   const api = useApi()
+  const notify = useNotify();
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
@@ -61,10 +62,7 @@ export function CreateOrganizationForm({ onOrganizationCreated }: CreateOrganiza
       setDialogOpen(false)
       setFormData({ name: "", slug: "" })
       onOrganizationCreated()
-      toast({
-        title: "Organización creada",
-        description: "La organización ha sido creada correctamente.",
-      })
+      notify("Organización creada correctamente.", "success");
 
       // Opcional: redirigir a la nueva organización
       setTimeout(() => {
@@ -72,11 +70,7 @@ export function CreateOrganizationForm({ onOrganizationCreated }: CreateOrganiza
       }, 500)
     } catch (err) {
       console.error("Error creating organization:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo crear la organización. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("Error al crear la organización. Por favor, intenta de nuevo.", "error");
     } finally {
       setIsSubmitting(false)
     }

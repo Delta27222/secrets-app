@@ -276,9 +276,7 @@
 
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import React from "react"
 import { useApi } from "@/components/api-provider"
 import type { OrganizationMembershipDetail } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -304,8 +302,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { UserPlus, UserX, Mail, User, UserCheck, Clock, MoreHorizontal, UserCog } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { toast } from "@/hooks/use-toast"
 import { useSession } from "next-auth/react"
+import { useNotify } from "@/hooks"
 
 interface OrganizationMembersProps {
   organizationId: string
@@ -315,24 +313,25 @@ interface OrganizationMembersProps {
 export function OrganizationMembers({ organizationId, onMembersUpdated }: OrganizationMembersProps) {
   const { data: session } = useSession()
   const api = useApi()
-  const [members, setMembers] = useState<OrganizationMembershipDetail[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedMember, setSelectedMember] = useState<OrganizationMembershipDetail | null>(null)
-  const [inviteForm, setInviteForm] = useState({
+  const notify = useNotify();
+  const [members, setMembers] = React.useState<OrganizationMembershipDetail[]>([])
+  const [loading, setLoading] = React.useState<boolean>(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [inviteDialogOpen, setInviteDialogOpen] = React.useState<boolean>(false)
+  const [editDialogOpen, setEditDialogOpen] = React.useState<boolean>(false)
+  const [selectedMember, setSelectedMember] = React.useState<OrganizationMembershipDetail | null>(null)
+  const [inviteForm, setInviteForm] = React.useState({
     email: "",
     role: "collab" as "owner" | "admin" | "collab",
   })
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = React.useState({
     role: "collab" as "owner" | "admin" | "collab",
   })
-  const [inviting, setInviting] = useState(false)
-  const [updating, setUpdating] = useState(false)
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+  const [inviting, setInviting] = React.useState<boolean>(false)
+  const [updating, setUpdating] = React.useState<boolean>(false)
+  const [currentUserRole, setCurrentUserRole] = React.useState<string | null>(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchMembers()
   }, [organizationId])
 
@@ -373,17 +372,10 @@ export function OrganizationMembers({ organizationId, onMembersUpdated }: Organi
       })
       fetchMembers()
       if (onMembersUpdated) onMembersUpdated()
-      toast({
-        title: "Invitación enviada",
-        description: "La invitación ha sido enviada correctamente.",
-      })
+      notify("La invitación ha sido enviada correctamente.", "success");
     } catch (err) {
       console.error("Error inviting member:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo invitar al miembro. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo invitar al miembro. Por favor, intenta de nuevo más tarde.", "error");
     } finally {
       setInviting(false)
     }
@@ -399,17 +391,10 @@ export function OrganizationMembers({ organizationId, onMembersUpdated }: Organi
       setEditDialogOpen(false)
       fetchMembers()
       if (onMembersUpdated) onMembersUpdated()
-      toast({
-        title: "Rol actualizado",
-        description: "El rol del miembro ha sido actualizado correctamente.",
-      })
+      notify("Rol actualizado correctamente.", "success");
     } catch (err) {
       console.error("Error updating member role:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el rol del miembro. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo actualizar el rol del miembro. Por favor, intenta de nuevo más tarde.", "error");
     } finally {
       setUpdating(false)
     }
@@ -420,17 +405,10 @@ export function OrganizationMembers({ organizationId, onMembersUpdated }: Organi
       await api.removeOrganizationMember(memberId)
       fetchMembers()
       if (onMembersUpdated) onMembersUpdated()
-      toast({
-        title: "Miembro eliminado",
-        description: "El miembro ha sido eliminado de la organización correctamente.",
-      })
+      notify("Miembro eliminado correctamente.", "success");
     } catch (err) {
       console.error("Error removing member:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar al miembro. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo eliminar al miembro. Por favor, intenta de nuevo más tarde.", "error");
     }
   }
 

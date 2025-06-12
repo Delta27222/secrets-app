@@ -15,12 +15,16 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, FolderKanban, Plus, Lock, Users } from "lucide-react"
+import { Home, FolderKanban, Lock, Users } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrganizationMembers } from "@/components/organization-members"
 import { OrganizationSettings } from "@/components/organization-settings"
+// Importar el componente CreateProjectForm
 import { CreateProjectForm } from "@/components/create-project-form"
+import { Badge } from "@/components/ui/badge"
+import { ProjectsGrid } from "@/components/projects-grid"
+
 
 export default function OrganizationPage() {
   const { data: session, status } = useSession()
@@ -33,8 +37,8 @@ export default function OrganizationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("projects")
+  // Añadir un nuevo estado para almacenar el rol del usuario en la organización
   const [userRole, setUserRole] = useState<string | null>(null)
-
 
   useEffect(() => {
     if (status === "authenticated" && params.id) {
@@ -43,11 +47,6 @@ export default function OrganizationPage() {
     }
   }, [status, params.id])
 
-  const handleOrganizationUpdated = () => {
-    if (params.id) {
-      fetchData(params.id as string)
-    }
-  }
 
   async function fetchData(organizationId: string) {
     try {
@@ -74,6 +73,12 @@ export default function OrganizationPage() {
       setError("No se pudieron cargar los datos. Por favor, intenta de nuevo más tarde.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOrganizationUpdated = () => {
+    if (params.id) {
+      fetchData(params.id as string)
     }
   }
 
@@ -128,14 +133,15 @@ export default function OrganizationPage() {
             <h1 className="text-3xl font-bold">{organization?.name}</h1>
             {organization?.description && <p className="text-muted-foreground mt-1">{organization.description}</p>}
           </div>
-         
-          {organization && userRole && (
+          <div className="flex space-x-3">
+            {organization && userRole && (
               <OrganizationSettings
                 organization={organization}
                 onOrganizationUpdated={handleOrganizationUpdated}
                 userRole={userRole}
               />
             )}
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -151,9 +157,9 @@ export default function OrganizationPage() {
           </TabsList>
 
           <TabsContent value="projects" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold">Mis Proyectos</h2>
-              {(userRole === "owner" || userRole === "admin" || userRole === "ADMIN") && (
+            <div className="flex justify-end">
+              {/* Solo mostrar el botón de crear proyecto si el usuario es admin o owner */}
+              {(userRole === "owner" || userRole === "admin") && (
                 <CreateProjectForm
                   organizationId={params.id as string}
                   onProjectCreated={() => fetchData(params.id as string)}
@@ -161,43 +167,8 @@ export default function OrganizationPage() {
               )}
             </div>
 
-            {projects.length === 0 ? (
-              <div className="text-center py-12">
-                <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-medium mb-2">No tienes acceso a ningún proyecto</h3>
-                <p className="text-muted-foreground mb-6">
-                  Crea un nuevo proyecto o solicita acceso a proyectos existentes.
-                </p>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" /> Crear Proyecto
-                </Button>
-              </div>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {projects.map((project) => (
-                  <Card key={project._id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle>{project.name}</CardTitle>
-                      <CardDescription>{project._id}</CardDescription>
-                      <CardDescription>{project.description || "Sin descripción"}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <FolderKanban className="mr-2 h-4 w-4" />
-                        <span>Proyecto</span>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button asChild className="w-full">
-                        <Link href={`/projects/${project._id}`}>Ver Proyecto</Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <ProjectsGrid projects={projects} organizationId={params.id as string} />
           </TabsContent>
-
           <TabsContent value="members">
             <OrganizationMembers organizationId={params.id as string} />
           </TabsContent>
@@ -206,4 +177,3 @@ export default function OrganizationPage() {
     </div>
   )
 }
-

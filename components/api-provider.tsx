@@ -20,10 +20,10 @@ const ApiContext = createContext<{
 export const useApi = () => {
   const context = useContext(ApiContext)
   if (!context.isReady) {
-    console.warn("API client no está listo. El token podría no estar configurado.")
+    // console.warn("API client no está listo. El token podría no estar configurado.")
   }
 
-  console.info("API client listo")
+  // console.info("API client listo")
   return context.client
 }
 

@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React from "react"
 import { useRouter } from "next/navigation"
 import { useApi } from "@/components/api-provider"
 import type { Organization } from "@/lib/api"
@@ -30,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Settings, Trash2 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { useNotify } from "@/hooks"
 
 // Modificar la interfaz para incluir el rol del usuario
 interface OrganizationSettingsProps {
@@ -42,11 +40,12 @@ interface OrganizationSettingsProps {
 export function OrganizationSettings({ organization, onOrganizationUpdated, userRole }: OrganizationSettingsProps) {
   const router = useRouter()
   const api = useApi()
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [formData, setFormData] = useState({
+  const notify = useNotify()
+  const [editDialogOpen, setEditDialogOpen] = React.useState<boolean>(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState<boolean>(false)
+  const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false)
+  const [isDeleting, setIsDeleting] = React.useState<boolean>(false)
+  const [formData, setFormData] = React.useState({
     name: organization.name,
     slug: organization.slug, // Usando el ID como slug inicial
   })
@@ -68,17 +67,10 @@ export function OrganizationSettings({ organization, onOrganizationUpdated, user
       })
       setEditDialogOpen(false)
       onOrganizationUpdated()
-      toast({
-        title: "Organización actualizada",
-        description: "La información de la organización ha sido actualizada correctamente.",
-      })
+      notify("Organización actualizada", "success");
     } catch (err) {
       console.error("Error updating organization:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la organización. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo actualizar la organización. Por favor, intenta de nuevo más tarde.", "error");
     } finally {
       setIsSubmitting(false)
     }
@@ -89,21 +81,14 @@ export function OrganizationSettings({ organization, onOrganizationUpdated, user
       setIsDeleting(true)
       await api.deleteOrganization(organization._id)
       setDeleteDialogOpen(false)
-      toast({
-        title: "Organización eliminada",
-        description: "La organización ha sido eliminada correctamente.",
-      })
+      notify("Organización eliminada correctamente.", "success");
       // Asegurar la redirección a la página principal
       setTimeout(() => {
         router.push("/")
       }, 500) // Pequeño retraso para asegurar que el toast se muestre
     } catch (err) {
       console.error("Error deleting organization:", err)
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar la organización. Por favor, intenta de nuevo más tarde.",
-        variant: "destructive",
-      })
+      notify("No se pudo eliminar la organización. Por favor, intenta de nuevo más tarde.", "error");
       setDeleteDialogOpen(false)
     } finally {
       setIsDeleting(false)
