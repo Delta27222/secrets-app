@@ -1,22 +1,72 @@
 "use client";
 import React from "react";
-import { Info } from "lucide-react";
+import { Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useProjectEnvironments, useVercelActions } from "@/hooks";
+import { Label } from "@/components/ui/label";
 
 export function VercelSyncForm() {
-  return (
-    <div className="w-full max-w-md mx-auto px-4 py-6 border border-dashed border-muted-foreground/30 rounded-xl text-center bg-muted/20 shadow-sm">
-      <div className="flex flex-col items-center space-y-4">
-        <div className="bg-blue-100 p-3 rounded-full">
-          <Info className="h-6 w-6 text-blue-600" />
-        </div>
-        <h3 className="text-lg font-semibold text-foreground">
-          Funcionalidad en desarrollo
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Estamos trabajando para habilitar esta sección pronto. ¡Gracias por tu
-          paciencia!
-        </p>
+  const didFetchRef = React.useRef(false);
+  const {
+    loading,
+    formData,
+    setFormData,
+    fetchVercelData,
+    handleSubmit,
+  } = useVercelActions();
+  const { selectedEnvironment } = useProjectEnvironments();
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  React.useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+    fetchVercelData();
+  }, [selectedEnvironment]);
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>Cargando información...</p>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="flex flex-col items-center space-y-5">
+        <div className="flex flex-col justify-center items-start w-full gap-2">
+          <Label htmlFor="name">Vercel Token</Label>
+          <Input
+            name="vercel_token"
+            value={formData.vercel_token}
+            onChange={handleChange}
+            placeholder="Ingrese el Vercel Api Key"
+          />
+        </div>
+        <div className="flex flex-col justify-center items-start w-full gap-2">
+          <Label htmlFor="name">ID de Proyecto</Label>
+          <Input
+            name="vercel_project_id"
+            value={formData.vercel_project_id}
+            onChange={handleChange}
+            placeholder="Ingrese el Project ID del proyecto en Vercel"
+          />
+        </div>
+
+        <Button type="submit">
+          <Save className="h-4 w-4" />
+          Actualizar valores
+        </Button>
+      </div>
+    </form>
   );
 }
