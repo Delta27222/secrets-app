@@ -13,6 +13,9 @@ import { EnvironmentCard } from "./V2/EnvironmentCard/EnvironmentCard";
 import { RenderLogoIcon, VercelLogoIcon } from "./ui/V2/icons";
 import { RenderSyncForm } from "./V2/Forms/RenderSyncForm";
 import { VercelSyncForm } from "./V2/Forms/VercelSyncForm";
+import { VercelSelectProjectTargetForm } from "./V2/Forms/VercelSelectProjectTargetForm";
+import { vercelDialogDescriptions } from "@/constants";
+import { VercelConfirmSyncForm } from "./V2/Forms/VercelConfirmSyncForm";
 
 interface ProjectEnvironmentsProps {
   projectId: string;
@@ -135,7 +138,9 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
         </DialogContainer>
       ) : null}
 
-      {dialogToOpen === "vercel" ? (
+      {dialogToOpen === "vercel" ||
+      dialogToOpen === "vercel_select_target" ||
+      dialogToOpen === "vercel_confirm_mismatches" ? (
         <DialogContainer
           dialogInfo={{
             title: "Sync to",
@@ -143,10 +148,17 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
             isOpen: environmentDetailsOpen,
             setIsOpen: setEnvironmentDetailsOpen,
             className: "max-w-md",
+            description: vercelDialogDescriptions[dialogToOpen] || "",
           }}
           closeButton={false}
         >
-          <VercelSyncForm />
+          {dialogToOpen === "vercel" ? <VercelSyncForm /> : null}
+          {dialogToOpen === "vercel_select_target" ? (
+            <VercelSelectProjectTargetForm />
+          ) : null}
+          {dialogToOpen === "vercel_confirm_mismatches" ? (
+            <VercelConfirmSyncForm />
+          ) : null}
         </DialogContainer>
       ) : null}
     </div>
