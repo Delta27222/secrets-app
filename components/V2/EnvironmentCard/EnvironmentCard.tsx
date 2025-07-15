@@ -25,13 +25,21 @@ interface EnvironmentCardProps {
   environment: Environment;
 }
 export function EnvironmentCard({ environment }: EnvironmentCardProps) {
-  const { handleViewEnvironment, setDialogToOpen, setEnvironmentDetailsOpen, setSelectedEnvironment } = useProjectEnvironments();
-  const { render_token, render_server_id, vercel_token, vercel_server_id } =
-    environment;
+  const {
+    handleViewEnvironment,
+    setDialogToOpen,
+    setEnvironmentDetailsOpen,
+    setSelectedEnvironment,
+  } = useProjectEnvironments();
+  const {
+    render_token,
+    render_server_id,
+    vercel_token,
+    vercel_project_id,
+  } = environment;
 
   const render = render_token && render_server_id;
-  const vercel = vercel_token && vercel_server_id;
-  const dontHaveRenderOrVercel = !render && !vercel;
+  const vercel = vercel_token && vercel_project_id;
 
   const handleOpenDialog = (dialog: string) => {
     setDialogToOpen(dialog);
@@ -63,56 +71,56 @@ export function EnvironmentCard({ environment }: EnvironmentCardProps) {
           </div>
           <div className="flex gap-2">
             <TooltipProvider>
-              {(render || dontHaveRenderOrVercel) && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDialog('render')}
-                      className="p-1 rounded-sm bg-transparent transition-transform duration-200 ease-in-out hover:scale-110  "
-                      tabIndex={0}
-                      aria-label="Ver detalles de Render"
-                    >
-                      <div className="relative">
-                        <span className="absolute scale-40 -top-3 -left-2">{render ? '✔️': '❌'}</span>
-                        <RenderIsotipoIcon
-                          className={`size-5 cursor-pointer ${
-                            render ? "opacity-100" : "opacity-40"
-                          }`}
-                        />
-                      </div>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {render ? "Conectado a Render" : "Render no configurado"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {(vercel || dontHaveRenderOrVercel) && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDialog('vercel')}
-                      className="p-1 rounded-sm bg-transparent transition-transform duration-200 ease-in-out hover:scale-110  "
-                      tabIndex={0}
-                      aria-label="Ver detalles de Vercel"
-                    >
-                      <div className="relative">
-                        <span className="absolute scale-40 -top-3 -left-2">{vercel ? '✔️': '❌'}</span>
-                        <VercelIsotipoIcon
-                          className={`size-5 cursor-pointer ${
-                            vercel ? "opacity-100" : "opacity-40"
-                          }`}
-                        />
-                      </div>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {vercel ? "Conectado a Vercel" : "Vercel no configurado"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDialog("render")}
+                    className="p-1 rounded-sm bg-transparent transition-transform duration-200 ease-in-out hover:scale-110  "
+                    tabIndex={0}
+                    aria-label="Ver detalles de Render"
+                  >
+                    <div className="relative">
+                      <span className="absolute scale-40 -top-3 -left-2">
+                        {render ? "✔️" : "❌"}
+                      </span>
+                      <RenderIsotipoIcon
+                        className={`size-5 cursor-pointer ${
+                          render ? "opacity-100" : "opacity-40"
+                        }`}
+                      />
+                    </div>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {render ? "Conectado a Render" : "Render no configurado"}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDialog("vercel")}
+                    className="p-1 rounded-sm bg-transparent transition-transform duration-200 ease-in-out hover:scale-110  "
+                    tabIndex={0}
+                    aria-label="Ver detalles de Vercel"
+                  >
+                    <div className="relative">
+                      <span className="absolute scale-40 -top-3 -left-2">
+                        {vercel ? "✔️" : "❌"}
+                      </span>
+                      <VercelIsotipoIcon
+                        className={`size-5 cursor-pointer ${
+                          vercel ? "opacity-100" : "opacity-40"
+                        }`}
+                      />
+                    </div>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {vercel ? "Conectado a Vercel" : "Vercel no configurado"}
+                </TooltipContent>
+              </Tooltip>
             </TooltipProvider>
           </div>
         </div>

@@ -6,6 +6,7 @@ import {
   ProjectEnvironmentsProvider,
   RenderActionsProvider,
   ToastContextProvider,
+  VercelActionsProvider,
 } from "@/context";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,7 +28,9 @@ export default function RootLayout({
         <AuthProvider>
           <ToastContextProvider>
             <ProjectEnvironmentsProvider>
-              <RenderActionsProvider>{children}</RenderActionsProvider>
+              <RenderActionsProvider>
+                <VercelActionsProvider>{children}</VercelActionsProvider>
+              </RenderActionsProvider>
             </ProjectEnvironmentsProvider>
             <div id="toast" />
           </ToastContextProvider>

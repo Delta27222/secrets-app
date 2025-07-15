@@ -3,7 +3,11 @@ import React from "react";
 import { Eye, EyeOff, Copy, Check, Save, FolderSync } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
-import { useProjectEnvironments, useRenderActions } from "@/hooks";
+import {
+  useProjectEnvironments,
+  useRenderActions,
+  useVercelActions,
+} from "@/hooks";
 
 export function TabViewSecrets() {
   const {
@@ -13,14 +17,21 @@ export function TabViewSecrets() {
     setShowSecrets,
     handleCopyAllSecrets,
     handleCopySecret,
+    setDialogToOpen,
   } = useProjectEnvironments();
-  const { handleSyncToRender, loading: synToRenderLoading } = useRenderActions();
-
-  const { render_server_id, render_token, vercel_server_id, vercel_token } =
-    selectedEnvironment || {};
+  const { handleSyncToRender, loading: synToRenderLoading } =
+    useRenderActions();
+  const { fetchVercelData, loading: synToVercelLoading } =
+    useVercelActions();
+  const {
+    render_server_id,
+    render_token,
+    vercel_project_id,
+    vercel_token,
+  } = selectedEnvironment || {};
 
   const isRenderEnvironment = render_server_id && render_token;
-  const isVercelEnvironment = vercel_server_id && vercel_token;
+  const isVercelEnvironment = vercel_project_id && vercel_token;
 
   return (
     <TabsContent value="view" className="space-y-4">
@@ -110,7 +121,7 @@ export function TabViewSecrets() {
           </div>
         </div>
       )}
-      <div className="flex flex-row justify-end items-center">
+      <div className="flex flex-row justify-end items-center gap-5">
         {isRenderEnvironment ? (
           <Button
             type="button"
@@ -128,7 +139,7 @@ export function TabViewSecrets() {
           >
             {synToRenderLoading ? (
               <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 Sincronizando...
               </>
             ) : (
@@ -140,11 +151,25 @@ export function TabViewSecrets() {
           </Button>
         ) : null}
         {isVercelEnvironment ? (
-          <Button type="button" className="flex items-center gap-2" disabled={false}>
-            {false ? (
+          <Button
+            onClick={async (e) => {
+              e.preventDefault();
+              if (
+                selectedEnvironment?.project_id &&
+                selectedEnvironment?.slug
+              ) {
+                await fetchVercelData();
+                setDialogToOpen("vercel_select_target");
+              }
+            }}
+            type="button"
+            className="flex items-center gap-2"
+            disabled={false}
+          >
+            {synToVercelLoading ? (
               <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Sincronizando...
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Cargando...
               </>
             ) : (
               <>
