@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React from "react"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { useApi, useApiReady } from "@/components/api-provider"
-import type { ProjectDetail } from "@/lib/api"
+import { useApi } from "@/components/api-provider"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,27 +12,30 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, Settings, Layers, Users } from "lucide-react"
+import { Home, Layers, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProjectEnvironments } from "@/components/project-environments"
 import { ProjectMembers } from "@/components/project-members"
 import { ProjectSettings } from "@/components/project-settings"
+import { useProjectsInfo } from "@/hooks"
 
 export default function ProjectDetailPage() {
   const { data: session, status } = useSession()
   const params = useParams()
   const router = useRouter()
   const api = useApi()
-  const apiReady = useApiReady()
-  const [project, setProject] = useState<ProjectDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("environments")
-  const [userProjectRole, setUserProjectRole] = useState<string | null>(null)
-  const [userOrgRole, setUserOrgRole] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState("environments")
 
+  const {
+    fetchProject,
+    error,
+    loading,
+    project,
+    userProjectRole,
+    userOrgRole,
+  } = useProjectsInfo()
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (status === "authenticated" && params.id) {
       api.setToken(session.accessToken)
       fetchProject(params.id as string)
@@ -47,39 +48,6 @@ export default function ProjectDetailPage() {
     }
   }
 
-
-  async function fetchProject(projectId: string) {
-    try {
-      setLoading(true)
-      const projectData = await api.getProject(projectId)
-      setProject(projectData)
-
-      // Obtener el rol del usuario en el proyecto
-      const projectMembers = await api.getProjectMembers(projectId)
-      if (session?.user?.email) {
-        const userMembership = projectMembers.find((m) => m.user.email === session.user.email)
-        if (userMembership) {
-          setUserProjectRole(userMembership.role)
-        }
-      }
-
-      // Obtener el rol del usuario en la organización
-      if (projectData.organization_id && session?.user?.email) {
-        const orgMembers = await api.getOrganizationMemberships(projectData.organization_id)
-        const userOrgMembership = orgMembers.find(
-          (m) => m.user?.email === session.user.email && m.status === "accepted",
-        )
-        if (userOrgMembership) {
-          setUserOrgRole(userOrgMembership.role)
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching project:", err)
-      setError("No se pudieron cargar los datos del proyecto. Por favor, intenta de nuevo más tarde.")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (status === "loading" || loading ) {
     return (
