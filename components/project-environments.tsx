@@ -37,6 +37,7 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
   } = useProjectEnvironments();
 
   React.useEffect(() => {
+    if (environments.length > 0) return;
     fetchEnvironments();
   }, [projectId]);
 
