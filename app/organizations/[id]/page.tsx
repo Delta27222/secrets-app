@@ -1,13 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React from "react"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { useApi, useApiReady } from "@/components/api-provider"
-import type { Organization, Project } from "@/lib/api"
+import { useApi } from "@/components/api-provider"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,70 +12,50 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, FolderKanban, Lock, Users } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Home, FolderKanban, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrganizationMembers } from "@/components/organization-members"
 import { OrganizationSettings } from "@/components/organization-settings"
 // Importar el componente CreateProjectForm
 import { CreateProjectForm } from "@/components/create-project-form"
-import { Badge } from "@/components/ui/badge"
 import { ProjectsGrid } from "@/components/projects-grid"
+import { useMemberships } from "@/hooks"
 
 
 export default function OrganizationPage() {
-  const { data: session, status } = useSession()
+  const api = useApi()
   const params = useParams()
   const router = useRouter()
-  const api = useApi()
-  api.setToken(session?.accessToken)
-  const [organization, setOrganization] = useState<Organization | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("projects")
-  // Añadir un nuevo estado para almacenar el rol del usuario en la organización
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const { data: session, status } = useSession()
+  const [activeTab, setActiveTab] = React.useState("projects")
 
-  useEffect(() => {
+  const {
+    loadingOgr,
+    loadingProjects,
+    loadingMemberships,
+    error,
+    organization,
+    userRole,
+    projects,
+    fetchAllData,
+    setOrganizationId,
+    fetchJustNeededData,
+  } = useMemberships();
+
+  const loading = loadingOgr || loadingProjects || loadingMemberships;
+
+  React.useEffect(() => {
     if (status === "authenticated" && params.id) {
       api.setToken(session.accessToken)
-      fetchData(params.id as string)
+      console.log("API lista, obteniendo datos de la organización")
+      setOrganizationId(params.id as string)
+      fetchJustNeededData(params.id as string)
     }
   }, [status, params.id])
 
-
-  async function fetchData(organizationId: string) {
-    try {
-      setLoading(true)
-      const [orgData, projectsData, membershipsData] = await Promise.all([
-        api.getOrganization(organizationId),
-        api.getMyProjectsByOrganization(organizationId),
-        api.getOrganizationMemberships(organizationId),
-      ])
-      setOrganization(orgData)
-      setProjects(projectsData)
-
-      // Buscar la membresía del usuario actual para determinar su rol
-      if (session?.user?.email) {
-        const userMembership = membershipsData.find(
-          (m) => m.user?.email === session.user.email && m.status === "accepted",
-        )
-        if (userMembership) {
-          setUserRole(userMembership.role)
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching data:", err)
-      setError("No se pudieron cargar los datos. Por favor, intenta de nuevo más tarde.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleOrganizationUpdated = () => {
     if (params.id) {
-      fetchData(params.id as string)
+      fetchJustNeededData(params.id as string)
     }
   }
 
@@ -162,12 +139,12 @@ export default function OrganizationPage() {
               {(userRole === "owner" || userRole === "admin") && (
                 <CreateProjectForm
                   organizationId={params.id as string}
-                  onProjectCreated={() => fetchData(params.id as string)}
+                  onProjectCreated={() => fetchAllData(params.id as string)}
                 />
               )}
             </div>
 
-            <ProjectsGrid projects={projects} organizationId={params.id as string} />
+            <ProjectsGrid projects={projects} />
           </TabsContent>
           <TabsContent value="members">
             <OrganizationMembers organizationId={params.id as string} />
