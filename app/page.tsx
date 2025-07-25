@@ -1,67 +1,43 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useApi, useApiReady } from "@/components/api-provider"
-import type { OrganizationMembership } from "@/lib/api"
 import { Building2, Lock, Plus, Users } from "lucide-react"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PendingInvitations } from "@/components/pending-invitations"
 import { CreateOrganizationForm } from "@/components/create-organization-form"
+import { useMemberships } from "@/hooks"
+import { Loading } from "@/components/V2/Common/Loading"
 
 export default function Home() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const api = useApi()
-  const apiReady = useApiReady()
-  const [memberships, setMemberships] = useState<OrganizationMembership[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("organizations")
+  const {
+    loadingMemberships,
+    memberships,
+    error,
+    fetchUserOrganizationMembership,
+  } = useMemberships();
+  const api = useApi();
+  const router = useRouter();
+  const apiReady = useApiReady();
+  const { data: session, status } = useSession();
+  const [activeTab, setActiveTab] = React.useState("organizations");
 
-  useEffect(() => {
-    // Solo hacemos la petición si la API está lista (tiene token configurado)
+  React.useEffect(() => {
     if (status === "authenticated") {
       api.setToken(session.accessToken)
       console.log("API lista, obteniendo membresías de organizaciones")
-      fetchOrganizationMemberships()
+      fetchUserOrganizationMembership()
     }
   }, [status, apiReady])
 
-  async function fetchOrganizationMemberships() {
-    try {
-      setLoading(true)
-      console.log("Iniciando petición para obtener membresías")
-      const data = await api.getMyOrganizationMemberships()
-      console.log("Membresías obtenidas:", data)
-      setMemberships(data)
-    } catch (err) {
-      console.error("Error fetching organization memberships:", err)
-      setError("No se pudieron cargar las organizaciones. Por favor, intenta de nuevo más tarde.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleInvitationAccepted = () => {
-    fetchOrganizationMemberships()
-  }
-
   if (status === "loading") {
-
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando</p>
-        </div>
-      </div>
-    )
+    return <Loading message="Cargando..." />
   }
 
   if (status === "unauthenticated") {
@@ -81,17 +57,14 @@ export default function Home() {
             </TabsList>
 
             {activeTab === "organizations" && (
-              <CreateOrganizationForm onOrganizationCreated={fetchOrganizationMemberships} />
+              <CreateOrganizationForm onOrganizationCreated={fetchUserOrganizationMembership} />
             )}
 
           </div>
 
           <TabsContent value="organizations">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p>Cargando organizaciones...</p>
-              </div>
+            {loadingMemberships ? (
+              <Loading message="Cargando organizaciones..." />
             ) : error ? (
               <div className="text-center py-12 text-red-500">{error}</div>
             ) : memberships.length === 0 ? (
@@ -135,7 +108,7 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="invitations">
-            <PendingInvitations onInvitationAccepted={handleInvitationAccepted} />
+            <PendingInvitations onInvitationAccepted={fetchUserOrganizationMembership} />
           </TabsContent>
         </Tabs>
       </main>

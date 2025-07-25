@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/command";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNotify } from "@/hooks";
+import { useMemberships, useNotify, useProjectsInfo } from "@/hooks";
 
 interface ProjectMembersProps {
   projectId: string;
@@ -49,14 +49,19 @@ interface ProjectMembersProps {
 export function ProjectMembers({ projectId }: ProjectMembersProps) {
   const api = useApi();
   const notify = useNotify();
-  const [members, setMembers] = React.useState<ProjectMember[]>([]);
+  const {
+    error,
+    loadingProjectMembers,
+    projectMembers,
+    fetchProjectMembers,
+  } = useProjectsInfo();
+  const { organizationId } = useMemberships();
+
   const [organizationMembers, setOrganizationMembers] = React.useState<
     OrganizationMembershipDetail[]
   >([]);
-  const [loading, setLoading] = React.useState<boolean>(true);
   const [loadingOrgMembers, setLoadingOrgMembers] =
     React.useState<boolean>(false);
-  const [error, setError] = React.useState<string | null>(null);
   const [addMemberDialogOpen, setAddMemberDialogOpen] =
     React.useState<boolean>(false);
   const [editMemberDialogOpen, setEditMemberDialogOpen] =
@@ -71,37 +76,12 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
     role: "viewer" as "admin" | "collab" | "viewer",
   });
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
-  const [organizationId, setOrganizationId] = React.useState<string | null>(
-    null
-  );
 
   React.useEffect(() => {
-    fetchMembers();
+    if (projectMembers.length > 0) return;
+    fetchProjectMembers(projectId);
   }, [projectId]);
 
-  async function fetchMembers() {
-    try {
-      setLoading(true);
-      const data = await api.getProjectMembers(projectId);
-      setMembers(data);
-
-      // Obtener el ID de la organización del primer miembro
-      if (data.length > 0 && data[0].project.organization_id) {
-        setOrganizationId(data[0].project.organization_id);
-      } else {
-        // Si no hay miembros, obtener los detalles del proyecto para conseguir el ID de la organización
-        const projectDetails = await api.getProject(projectId);
-        setOrganizationId(projectDetails.organization_id);
-      }
-    } catch (err) {
-      console.error("Error fetching project members:", err);
-      setError(
-        "No se pudieron cargar los miembros del proyecto. Por favor, intenta de nuevo más tarde."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const fetchOrganizationMembers = async () => {
     if (!organizationId) return;
@@ -125,7 +105,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
   const handleOpenAddMemberDialog = () => {
     fetchOrganizationMembers();
     setAddMemberDialogOpen(true);
-    setSelectedUserIds([]); // Reset selected users when dialog opens
+    setSelectedUserIds([]);
   };
 
   const handleAddMember = async (e: React.FormEvent) => {
@@ -151,7 +131,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
       setAddMemberForm({
         role: "viewer",
       });
-      fetchMembers();
+      fetchProjectMembers(projectId);
       notify("Miembros añadidos correctamente.", "success");
     } catch (err) {
       console.error("Error adding project members:", err);
@@ -169,7 +149,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
       setIsSubmitting(true);
       await api.updateProjectMember(selectedMember._id, editMemberForm.role);
       setEditMemberDialogOpen(false);
-      fetchMembers();
+    fetchProjectMembers(projectId);
       notify("Rol actualizado correctamente", "success");
     } catch (err) {
       console.error("Error updating project member:", err);
@@ -185,7 +165,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
   const handleRemoveMember = async (memberId: string) => {
     try {
       await api.removeProjectMember(memberId);
-      fetchMembers();
+    fetchProjectMembers(projectId);
       notify("Miembro eliminado correctamente", "success");
     } catch (err) {
       console.error("Error removing project member:", err);
@@ -216,7 +196,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
 
   // Verificar si un usuario ya es miembro del proyecto
   const isAlreadyMember = (userId: string) => {
-    return members.some((member) => member.user._id === userId);
+    return projectMembers.some((member) => member.user._id === userId);
   };
 
   const toggleUserSelection = (userId: string) => {
@@ -227,7 +207,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
     );
   };
 
-  if (loading) {
+  if (loadingProjectMembers) {
     return (
       <div className="text-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -363,7 +343,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
         </Dialog>
       </div>
 
-      {members.length === 0 ? (
+      {projectMembers.length === 0 ? (
         <div className="text-center py-12">
           <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-xl font-medium mb-2">
@@ -381,7 +361,7 @@ export function ProjectMembers({ projectId }: ProjectMembersProps) {
             <div className="col-span-3"></div>
             <div className="col-span-1">Acciones</div>
           </div>
-          {members.map((member) => (
+          {projectMembers.map((member) => (
             <div
               key={member._id}
               className="grid grid-cols-12 gap-4 p-4 items-center border-b last:border-0"
