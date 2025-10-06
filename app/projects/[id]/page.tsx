@@ -12,12 +12,15 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, Layers, Users } from "lucide-react"
+import { Home, Layers, Users, Logs} from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProjectEnvironments } from "@/components/project-environments"
 import { ProjectMembers } from "@/components/project-members"
 import { ProjectSettings } from "@/components/project-settings"
 import { useProjectsInfo } from "@/hooks"
+import { useLogs } from "@/hooks/useLogs"
+import LogsTable from "@/components/V2/Logs/LogsTable"
+import { customEnvironmentsColumns } from "@/components/V2/Columns/EnvironmentsColumns"
 
 export default function ProjectDetailPage() {
   const { data: session, status } = useSession()
@@ -34,6 +37,15 @@ export default function ProjectDetailPage() {
     userProjectRole,
     userOrgRole,
   } = useProjectsInfo()
+  const canSeeLogs = userProjectRole === "admin" || userOrgRole === "owner";
+  const {
+    logs,
+    loading: logsLoading,
+    fetchEnvironmentsLogs,
+    pagination,
+    goToPage,
+    changePerPage
+  } = useLogs()
 
   React.useEffect(() => {
     if (status === "authenticated" && params.id) {
@@ -41,6 +53,12 @@ export default function ProjectDetailPage() {
       fetchProject(params.id as string)
     }
   }, [status, params.id])
+
+  React.useEffect(() => {
+    if (activeTab === "logs") {
+      fetchEnvironmentsLogs(pagination?.page, pagination?.per_page)
+    }
+  }, [activeTab])
 
   const handleProjectUpdated = () => {
     if (params.id) {
@@ -126,11 +144,36 @@ export default function ProjectDetailPage() {
               <Users className="mr-2 h-4 w-4" />
               Miembros
             </TabsTrigger>
+            {canSeeLogs ? (
+              <TabsTrigger value="logs" className="flex items-center">
+                <Logs className="mr-2 h-4 w-4" />
+                Logs
+              </TabsTrigger>
+            ) : null}
           </TabsList>
 
           <TabsContent value="environments">{project && <ProjectEnvironments projectId={project._id} />}</TabsContent>
 
           <TabsContent value="members">{project && <ProjectMembers projectId={project._id} />}</TabsContent>
+
+          <TabsContent value="logs">
+            {project && (
+              <LogsTable
+                title="Logs de ambientes"
+                logs={logs}
+                loading={logsLoading}
+                columns={customEnvironmentsColumns}
+                pagination={pagination ? {
+                  currentPage: pagination.page,
+                  totalPages: pagination.total_pages,
+                  total: pagination.total,
+                  perPage: pagination.per_page,
+                  onPageChange: goToPage,
+                  onPerPageChange: changePerPage,
+                } : undefined}
+              />
+            )}
+          </TabsContent>
         </Tabs>
       </main>
     </div>

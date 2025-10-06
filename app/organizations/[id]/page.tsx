@@ -12,7 +12,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, FolderKanban, Users } from "lucide-react"
+import { Home, FolderKanban, Users, Logs } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrganizationMembers } from "@/components/organization-members"
 import { OrganizationSettings } from "@/components/organization-settings"
@@ -20,6 +20,9 @@ import { OrganizationSettings } from "@/components/organization-settings"
 import { CreateProjectForm } from "@/components/create-project-form"
 import { ProjectsGrid } from "@/components/projects-grid"
 import { useMemberships } from "@/hooks"
+import LogsTable from "@/components/V2/Logs/LogsTable"
+import { useLogs } from "@/hooks/useLogs"
+import { defaultLogsColumns } from "@/components/V2/Columns/DefaultColumns"
 
 
 export default function OrganizationPage() {
@@ -41,7 +44,16 @@ export default function OrganizationPage() {
     setOrganizationId,
     fetchJustNeededData,
   } = useMemberships();
+  const {
+    logs,
+    loading: logsLoading,
+    fetchOrganizationLogs,
+    pagination,
+    goToPage,
+    changePerPage
+  } = useLogs()
 
+  const canSeeLogs = userRole === "owner" || userRole === "admin";
   const loading = loadingOgr || loadingProjects || loadingMemberships;
 
   React.useEffect(() => {
@@ -52,6 +64,12 @@ export default function OrganizationPage() {
       fetchJustNeededData(params.id as string)
     }
   }, [status, params.id])
+
+  React.useEffect(() => {
+    if (activeTab === "logs") {
+      fetchOrganizationLogs(pagination?.page, pagination?.per_page)
+    }
+  }, [activeTab])
 
   const handleOrganizationUpdated = () => {
     if (params.id) {
@@ -131,6 +149,10 @@ export default function OrganizationPage() {
               <Users className="mr-2 h-4 w-4" />
               Miembros
             </TabsTrigger>
+            <TabsTrigger value="logs" className="flex items-center">
+              <Logs className="mr-2 h-4 w-4" />
+              Logs
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="projects" className="space-y-6">
@@ -149,6 +171,24 @@ export default function OrganizationPage() {
           <TabsContent value="members">
             <OrganizationMembers organizationId={params.id as string} />
           </TabsContent>
+          {canSeeLogs && (
+            <TabsContent value="logs">
+              <LogsTable
+                title="Logs de la organización"
+                logs={logs}
+                loading={logsLoading}
+                columns={defaultLogsColumns}
+                pagination={pagination ? {
+                  currentPage: pagination.page,
+                  totalPages: pagination.total_pages,
+                  total: pagination.total,
+                  perPage: pagination.per_page,
+                  onPageChange: goToPage,
+                  onPerPageChange: changePerPage,
+                } : undefined}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
