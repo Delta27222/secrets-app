@@ -10,6 +10,7 @@ import {
   VercelActionsProvider,
 } from "@/context";
 import { ProjectsInfoProvider } from "@/context/ProjectsInfoContext";
+import { LogsProvider } from "@/context/LogsContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,18 +29,20 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
-          <MembershipsProvider>
-            <ProjectsInfoProvider>
-              <ToastContextProvider>
-                <ProjectEnvironmentsProvider>
-                  <RenderActionsProvider>
-                    <VercelActionsProvider>{children}</VercelActionsProvider>
-                  </RenderActionsProvider>
-                </ProjectEnvironmentsProvider>
-                <div id="toast" />
-              </ToastContextProvider>
-            </ProjectsInfoProvider>
-          </MembershipsProvider>
+            <MembershipsProvider>
+              <ProjectsInfoProvider>
+                <ToastContextProvider>
+                  <ProjectEnvironmentsProvider>
+                    <LogsProvider>
+                      <RenderActionsProvider>
+                        <VercelActionsProvider>{children}</VercelActionsProvider>
+                      </RenderActionsProvider>
+                    </LogsProvider>
+                  </ProjectEnvironmentsProvider>
+                  <div id="toast" />
+                </ToastContextProvider>
+              </ProjectsInfoProvider>
+            </MembershipsProvider>
         </AuthProvider>
       </body>
     </html>
