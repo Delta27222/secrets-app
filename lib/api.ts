@@ -49,8 +49,14 @@ export interface User {
   email: string
   username?: string
   displayName?: string
-  createdAt: string | null
-  updatedAt: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface MinimalUser {
+  id: string
+  email: string
+  displayName?: string
 }
 
 export interface OrganizationMembershipDetail {
@@ -135,6 +141,29 @@ export interface ProjectMember {
   createdAt: string
   updatedAt: string
 }
+
+export interface Log {
+  id: string
+  user: string | MinimalUser
+  action: string
+  date: string
+  targetType: string
+  idTarget: string
+  details: string
+  execution_time: string
+}
+
+export interface PaginationMeta {
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: PaginationMeta
+}
 // Función para realizar peticiones autenticadas a la API
 export async function fetchWithAuth(
   url: string,
@@ -177,6 +206,16 @@ export class ApiClient {
 
   hasToken(): boolean {
     return !!this.token
+  }
+
+  async getMinimalUsers(): Promise<MinimalUser[]> {
+    const response = await fetchWithAuth("/v1/users/minimal", this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getMinimalUsers:", response.status, errorText)
+      throw new Error(`Error al obtener usuarios minimales: ${response.status} ${errorText}`)
+    }
+    return response.json()
   }
 
   async getMyOrganizationMemberships(): Promise<OrganizationMembership[]> {
@@ -714,6 +753,36 @@ export class ApiClient {
       const errorText = await response.text()
       console.error("Error en getVercelTargets:", response.status, errorText)
       throw new Error(`Error al obtener targets de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  //LOGS
+  async getEnvironmentsLogs(
+    targetIds: string[],
+    page: number = 1,
+    perPage: number = 20
+  ): Promise<PaginatedResponse<Log>> {
+    const targetParams = targetIds.map(id => `target_ids=${id}`).join('&')
+    const paginationParams = `page=${page}&per_page=${perPage}`
+    const queryParams = `${targetParams}&${paginationParams}`
+
+    const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getEnvironmentsLogs:", response.status, errorText)
+      throw new Error(`Error al obtener logs de ambientes: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getAllLogs(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Log>> {
+    const queryParams = `page=${page}&per_page=${perPage}`
+    const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getAllLogs:", response.status, errorText)
+      throw new Error(`Error al obtener logs: ${response.status} ${errorText}`)
     }
     return response.json()
   }
