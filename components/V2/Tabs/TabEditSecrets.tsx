@@ -1,13 +1,9 @@
 "use client";
 import React from "react";
-import { Eye, EyeOff, Copy, Check, Save } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import type { Environment } from "@/lib/api";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useApi } from "@/components/api-provider";
-import { parseEnvText } from "@/utils/parseEnvText";
 import { useProjectEnvironments } from "@/hooks";
 
 export function TabEditSecrets() {

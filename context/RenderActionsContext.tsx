@@ -51,7 +51,7 @@ export function RenderActionsProvider({ children }: Props) {
   const api = useApi();
   const notify = useNotify();
 
-  const { selectedEnvironment, setEnvironmentDetailsOpen } =
+  const { selectedEnvironment, setEnvironmentDetailsOpen, fetchEnvironments } =
     useProjectEnvironments();
   const [loading, setLoading] = React.useState<boolean>(false);
   const [formData, setFormData] = React.useState<RenderData>({
@@ -112,6 +112,7 @@ export function RenderActionsProvider({ children }: Props) {
       );
       if (data) {
         notify("Datos de Render actualizados.", "success");
+        fetchEnvironments();
         setEnvironmentDetailsOpen(false);
       }
     } catch (err) {
@@ -134,7 +135,7 @@ export function RenderActionsProvider({ children }: Props) {
         selectedEnvironment.project_id,
         selectedEnvironment.slug
       );
-      if (data.status_code === 200) {
+      if (data.code === 'success') {
         notify(
           "Secretos sincronizados con Render.",
           "success"

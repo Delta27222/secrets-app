@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import React from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,26 +9,19 @@ import { FolderKanban, Users, Folder, User, ChevronDown, ChevronRight, ChevronUp
 import Link from "next/link"
 import type { Project } from "@/lib/api"
 import { cn } from "@/lib/utils"
-// import { motion, AnimatePresence } from "framer-motion"
 
 interface ProjectsGridProps {
   projects: Project[]
-  organizationId: string
 }
 
-interface GroupedProject {
-  name: string
-  projects: Project[]
-}
-
-export function ProjectsGrid({ projects, organizationId }: ProjectsGridProps) {
-  const [viewMode, setViewMode] = useState<"folder" | "team">("folder")
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
-  const [allExpanded, setAllExpanded] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
+export function ProjectsGrid({ projects }: ProjectsGridProps) {
+  const [viewMode, setViewMode] = React.useState<"folder" | "team">("folder")
+  const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>({})
+  const [allExpanded, setAllExpanded] = React.useState(false)
+  const [isInitialized, setIsInitialized] = React.useState(false)
 
   // Memoizar la función de agrupación para evitar recálculos innecesarios
-  const groupProjects = useMemo(() => {
+  const groupProjects = React.useMemo(() => {
     const groups: Record<string, Project[]> = {}
 
     projects.forEach((project) => {
@@ -54,7 +47,7 @@ export function ProjectsGrid({ projects, organizationId }: ProjectsGridProps) {
   }, [projects, viewMode]) // Solo recalcular cuando projects o viewMode cambien
 
   // Inicializar el estado de expansión solo cuando cambia viewMode o allExpanded
-  useEffect(() => {
+  React.useEffect(() => {
     // Crear un nuevo objeto para el estado de expansión
     const initialExpandedState: Record<string, boolean> = {}
 

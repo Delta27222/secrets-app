@@ -49,8 +49,14 @@ export interface User {
   email: string
   username?: string
   displayName?: string
-  createdAt: string | null
-  updatedAt: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface MinimalUser {
+  id: string
+  email: string
+  displayName?: string
 }
 
 export interface OrganizationMembershipDetail {
@@ -104,7 +110,8 @@ export interface Environment {
   render_token?: string;
   render_server_id?: string;
   vercel_token?: string;
-  vercel_server_id?: string;
+  vercel_project_id?: string;
+  vercel_target?: string[];
 }
 
 export interface EnvironmentsResponse {
@@ -133,6 +140,29 @@ export interface ProjectMember {
   role: "admin" | "collab" | "viewer"
   createdAt: string
   updatedAt: string
+}
+
+export interface Log {
+  id: string
+  user: string | MinimalUser
+  action: string
+  date: string
+  targetType: string
+  idTarget: string
+  details: string
+  execution_time: string
+}
+
+export interface PaginationMeta {
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: PaginationMeta
 }
 // Función para realizar peticiones autenticadas a la API
 export async function fetchWithAuth(
@@ -176,6 +206,16 @@ export class ApiClient {
 
   hasToken(): boolean {
     return !!this.token
+  }
+
+  async getMinimalUsers(): Promise<MinimalUser[]> {
+    const response = await fetchWithAuth("/v1/users/minimal", this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getMinimalUsers:", response.status, errorText)
+      throw new Error(`Error al obtener usuarios minimales: ${response.status} ${errorText}`)
+    }
+    return response.json()
   }
 
   async getMyOrganizationMemberships(): Promise<OrganizationMembership[]> {
@@ -619,7 +659,7 @@ export class ApiClient {
   }
 
 
-async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
+  async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
     console.log(`Sincronizando secretos con Render ambiente ${slug} del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
     const response = await fetchWithAuth(
       `/v1/sync/render/${projectId}/${slug}`,
@@ -637,7 +677,118 @@ async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
     }
     return response.json()
   }
+
+  //Vercel API methods
+  async getVercelInfo(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo información de Vercel para el proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/projects/${projectId}/${slug}/vercel_info`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getVercelInfo:", response.status, errorText)
+      throw new Error(`Error al obtener información de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async updateVercelInfo(environmentId: string, vercel_project_id: string, vercel_token: string, vercel_target: string[]): Promise<any> {
+    console.log(`Actualizando información de Vercel ${environmentId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/environments/${environmentId}/vercel`, this.token, this.tokenType, {
+      method: "PATCH",
+      body: JSON.stringify({ vercel_data: { vercel_project_id, vercel_token, vercel_target } }),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en updateVercelInfo:", response.status, errorText)
+      throw new Error(`Error al actualizar información de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async syncSecretsToVercel(projectId: string, slug: string, remove_missing_secrets: boolean, target_name: string): Promise<any> {
+    console.log(`Sincronizando secretos con Vercel ambiente ${slug} del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+    const query = new URLSearchParams({
+      remove_missing_secrets: String(remove_missing_secrets !== false),
+      target_name
+    })
+    const response = await fetchWithAuth(
+      `/v1/sync/vercel/${projectId}/${slug}/?${query.toString()}`,
+      this.token,
+      this.tokenType,
+      {
+        method: 'POST',
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en syncSecretsToVercel:", response.status, errorText)
+      throw new Error(`Error al sincronizar secretos con Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getVercelMismatches(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo mismatches de Vercel para el proyecto ${projectId}, ambiente ${slug} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(
+      `/v1/vercel/${projectId}/${slug}/mismatches`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getVercelMismatches:", response.status, errorText)
+      throw new Error(`Error al obtener mismatches de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getVercelProjectTargets(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo targets de Vercel para el proyecto ${projectId}, ambiente ${slug} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(
+      `/v1/vercel/${projectId}/${slug}/targets`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getVercelTargets:", response.status, errorText)
+      throw new Error(`Error al obtener targets de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  //LOGS
+  async getEnvironmentsLogs(
+    targetIds: string[],
+    page: number = 1,
+    perPage: number = 20
+  ): Promise<PaginatedResponse<Log>> {
+    const targetParams = targetIds.map(id => `target_ids=${id}`).join('&')
+    const paginationParams = `page=${page}&per_page=${perPage}`
+    const queryParams = `${targetParams}&${paginationParams}`
+
+    const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getEnvironmentsLogs:", response.status, errorText)
+      throw new Error(`Error al obtener logs de ambientes: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getAllLogs(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Log>> {
+    const queryParams = `page=${page}&per_page=${perPage}`
+    const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getAllLogs:", response.status, errorText)
+      throw new Error(`Error al obtener logs: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
 }
+
+
 
 // Exportamos una instancia por defecto para uso general
 export const apiClient = new ApiClient()
