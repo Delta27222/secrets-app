@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Layers, Plus } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,11 +12,12 @@ import { getEnvironmentBadge } from "./V2/Badge/EnviromentBadge";
 import { useProjectEnvironments } from "@/hooks";
 import { EnvironmentCard } from "./V2/EnvironmentCard/EnvironmentCard";
 import { RenderLogoIcon, VercelLogoIcon } from "./ui/V2/icons";
-import { RenderSyncForm } from "./V2/Forms/RenderSyncForm";
-import { VercelSyncForm } from "./V2/Forms/VercelSyncForm";
-import { VercelSelectProjectTargetForm } from "./V2/Forms/VercelSelectProjectTargetForm";
 import { vercelDialogDescriptions } from "@/constants";
-import { VercelConfirmSyncForm } from "./V2/Forms/VercelConfirmSyncForm";
+
+const RenderSyncForm = dynamic(() => import("./V2/Forms/RenderSyncForm").then(mod => ({ default: mod.RenderSyncForm })), { ssr: false });
+const VercelSyncForm = dynamic(() => import("./V2/Forms/VercelSyncForm").then(mod => ({ default: mod.VercelSyncForm })), { ssr: false });
+const VercelSelectProjectTargetForm = dynamic(() => import("./V2/Forms/VercelSelectProjectTargetForm").then(mod => ({ default: mod.VercelSelectProjectTargetForm })), { ssr: false });
+const VercelConfirmSyncForm = dynamic(() => import("./V2/Forms/VercelConfirmSyncForm").then(mod => ({ default: mod.VercelConfirmSyncForm })), { ssr: false });
 
 interface ProjectEnvironmentsProps {
   projectId: string;
