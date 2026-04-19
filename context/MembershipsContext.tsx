@@ -207,7 +207,7 @@ export function MembershipsProvider({ children }: Props) {
     if (status === "authenticated") {
       api.setToken(session.accessToken);
       setOrganizationId(organizationId);
-      const promises = [];
+      const promises: Promise<unknown>[] = [];
 
       if (!userRole) {
         setLoadingMemberships(true);
