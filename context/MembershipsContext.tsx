@@ -101,7 +101,7 @@ export function MembershipsProvider({ children }: Props) {
   const [loadingMemberships, setLoadingMemberships] =
     React.useState<boolean>(false);
 
-  async function fetchAllData(organizationId: string) {
+  const fetchAllData = React.useCallback(async (organizationId: string) => {
     try {
       setLoading(true);
       const [orgData, projectsData, membershipsData] = await Promise.all([
@@ -130,9 +130,9 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, session?.user?.email]);
 
-  async function fetchUserRole(organizationId: string) {
+  const fetchUserRole = React.useCallback(async (organizationId: string) => {
     try {
       setLoadingMemberships(true);
       const membershipsData = await api.getOrganizationMemberships(organizationId);
@@ -154,9 +154,9 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingMemberships(false);
     }
-  }
+  }, [api, session?.user?.email]);
 
-  async function fetchOrganization(organizationId: string) {
+  const fetchOrganization = React.useCallback(async (organizationId: string) => {
     setOrganizationId(organizationId);
     try {
       setLoadingOgr(true);
@@ -170,14 +170,12 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingOgr(false);
     }
-  }
+  }, [api]);
 
-  async function fetchUserOrganizationMembership() {
+  const fetchUserOrganizationMembership = React.useCallback(async () => {
     try {
       setLoadingMemberships(true);
-      console.log("Iniciando petición para obtener membresías");
       const data = await api.getMyOrganizationMemberships();
-      console.log("Membresías obtenidas:", data);
       setMemberships(data);
     } catch (err) {
       console.error("Error fetching organization memberships:", err);
@@ -187,9 +185,9 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingMemberships(false);
     }
-  }
+  }, [api]);
 
-  async function fetchMyProjectsByOrganization(organizationId: string) {
+  const fetchMyProjectsByOrganization = React.useCallback(async (organizationId: string) => {
     setOrganizationId(organizationId);
     try {
       setLoadingProjects(true);
@@ -203,28 +201,34 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingProjects(false);
     }
-  }
+  }, [api]);
 
-  async function fetchJustNeededData(organizationId: string) {
+  const fetchJustNeededData = React.useCallback(async (organizationId: string) => {
     if (status === "authenticated") {
       api.setToken(session.accessToken);
       setOrganizationId(organizationId);
+      const promises = [];
+
       if (!userRole) {
         setLoadingMemberships(true);
-        await fetchUserRole(organizationId);
+        promises.push(fetchUserRole(organizationId));
       }
       if (!organization) {
         setLoadingOgr(true);
-        await fetchOrganization(organizationId);
+        promises.push(fetchOrganization(organizationId));
       }
       if (!projects.length) {
         setLoadingProjects(true);
-        await fetchMyProjectsByOrganization(organizationId);
+        promises.push(fetchMyProjectsByOrganization(organizationId));
+      }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
       }
     }
-  }
+  }, [status, api, session?.accessToken, userRole, organization, projects.length, fetchUserRole, fetchOrganization, fetchMyProjectsByOrganization]);
 
-  async function fetchOrganizationMembers(organizationId: string) {
+  const fetchOrganizationMembers = React.useCallback(async (organizationId: string) => {
     try {
       setLoading(true)
       const data = await api.getOrganizationMemberships(organizationId)
@@ -235,7 +239,7 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [api]);
 
   const value = React.useMemo(
     () => ({
@@ -273,29 +277,16 @@ export function MembershipsProvider({ children }: Props) {
     }),
     [
       loading,
-      setLoading,
       memberships,
-      setMemberships,
       error,
-      setError,
       userRole,
-      setUserRole,
       organizationId,
-      setOrganizationId,
       organization,
-      setOrganization,
       members,
-      setMembers,
       projects,
-      setProjects,
       loadingOgr,
-      setLoadingOgr,
       loadingProjects,
-      setLoadingProjects,
       loadingMemberships,
-      setLoadingMemberships,
-
-      //Functions
       fetchAllData,
       fetchOrganizationMembers,
       fetchUserRole,
