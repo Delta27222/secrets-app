@@ -100,7 +100,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
   >({});
   const [dialogToOpen, setDialogToOpen] = React.useState<string>('');
 
-  async function fetchEnvironments() {
+  const fetchEnvironments = React.useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getProjectEnvironments(`${param.id}`);
@@ -113,9 +113,9 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, param.id]);
 
-  const handleViewEnvironment = async (environmentSlug: string) => {
+  const handleViewEnvironment = React.useCallback(async (environmentSlug: string) => {
     try {
       const environmentDetails = await api.getEnvironmentDetails(
         param.id as string,
@@ -133,9 +133,9 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         "No se pudieron cargar los detalles del ambiente. Por favor, intenta de nuevo más tarde."
       );
     }
-  };
+  }, [api, param.id]);
 
-  const handleCopyAllSecrets = () => {
+  const handleCopyAllSecrets = React.useCallback(() => {
     if (!selectedEnvironment) return;
 
     const allSecrets = Object.entries(selectedEnvironment.secrets || {})
@@ -157,9 +157,9 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         );
       }
     );
-  };
+  }, [selectedEnvironment, notify]);
 
-  const handleCopySecret = (key: string, value: string) => {
+  const handleCopySecret = React.useCallback((key: string, value: string) => {
     navigator.clipboard.writeText(value).then(
       () => {
         // Actualizar el estado para mostrar el ícono de confirmación
@@ -180,9 +180,9 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         notify("No se pudo copiar el valor al portapapeles.", "error");
       }
     );
-  };
+  }, [notify]);
 
-  const handleSaveEnvironment = async () => {
+  const handleSaveEnvironment = React.useCallback(async () => {
     if (!selectedEnvironment) return;
 
     try {
@@ -208,7 +208,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
       });
 
       // Refrescar la lista de ambientes
-      fetchEnvironments();
+      await fetchEnvironments();
 
       // Cambiar a la pestaña de visualización
       setActiveTab("view");
@@ -226,7 +226,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [selectedEnvironment, envText, api, fetchEnvironments, notify]);
 
   const value = React.useMemo(
     () => ({
@@ -261,27 +261,18 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     }),
     [
       environments,
-      setEnvironments,
       loading,
-      setLoading,
       error,
-      setError,
       selectedEnvironment,
-      setSelectedEnvironment,
       showSecrets,
-      setShowSecrets,
       environmentDetailsOpen,
-      setEnvironmentDetailsOpen,
       activeTab,
-      setActiveTab,
       envText,
-      setEnvText,
       isSaving,
-      setIsSaving,
       copiedSecrets,
-      setCopiedSecrets,
       dialogToOpen,
-      setDialogToOpen,
+      fetchEnvironments,
+      handleViewEnvironment,
       handleCopyAllSecrets,
       handleCopySecret,
       handleSaveEnvironment,
