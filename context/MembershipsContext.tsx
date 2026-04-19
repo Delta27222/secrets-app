@@ -5,6 +5,11 @@ import { useApi, useApiReady } from "@/components/api-provider";
 import { Organization, OrganizationMembership, OrganizationMembershipDetail, Project } from "@/lib/api";
 import { useSession } from "next-auth/react";
 
+export type FetchOrganizationOptions = {
+  /** Si es true, no activa `loadingOgr` (evita pantalla completa al refrescar tras guardar). */
+  silent?: boolean;
+};
+
 export type TMembershipsContext = {
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -35,7 +40,7 @@ export type TMembershipsContext = {
   fetchOrganizationMembers: (organizationId: string) => Promise<void>;
   fetchAllData: (organizationId: string) => Promise<void>;
   fetchUserRole: (organizationId: string) => Promise<void>;
-  fetchOrganization: (organizationId: string) => Promise<void>;
+  fetchOrganization: (organizationId: string, options?: FetchOrganizationOptions) => Promise<void>;
   fetchUserOrganizationMembership: () => Promise<void>;
   fetchMyProjectsByOrganization: (organizationId: string) => Promise<void>;
   fetchJustNeededData: (organizationId: string) => Promise<void>;
@@ -68,7 +73,7 @@ export const MembershipsContext = React.createContext<TMembershipsContext>({
   fetchOrganizationMembers: async (organizationId: string) => {},
   fetchAllData: async () => {},
   fetchUserRole: async () => {},
-  fetchOrganization: async () => {},
+  fetchOrganization: async (_: string, __?: FetchOrganizationOptions) => {},
   fetchUserOrganizationMembership: async () => {},
   fetchMyProjectsByOrganization: async () => {},
   fetchJustNeededData: async (organizationId: string) => {},
@@ -156,21 +161,29 @@ export function MembershipsProvider({ children }: Props) {
     }
   }, [api, session?.user?.email]);
 
-  const fetchOrganization = React.useCallback(async (organizationId: string) => {
-    setOrganizationId(organizationId);
-    try {
-      setLoadingOgr(true);
-      const data = await api.getOrganization(organizationId);
-      setOrganization(data);
-    } catch (err) {
-      console.error("Error fetching organization:", err);
-      setError(
-        "No se pudieron cargar los datos de la organización. Por favor, intenta de nuevo más tarde."
-      );
-    } finally {
-      setLoadingOgr(false);
-    }
-  }, [api]);
+  const fetchOrganization = React.useCallback(
+    async (organizationId: string, options?: FetchOrganizationOptions) => {
+      const silent = options?.silent ?? false;
+      setOrganizationId(organizationId);
+      try {
+        if (!silent) {
+          setLoadingOgr(true);
+        }
+        const data = await api.getOrganization(organizationId);
+        setOrganization(data);
+      } catch (err) {
+        console.error("Error fetching organization:", err);
+        setError(
+          "No se pudieron cargar los datos de la organización. Por favor, intenta de nuevo más tarde."
+        );
+      } finally {
+        if (!silent) {
+          setLoadingOgr(false);
+        }
+      }
+    },
+    [api],
+  );
 
   const fetchUserOrganizationMembership = React.useCallback(async () => {
     try {

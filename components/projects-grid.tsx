@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FolderKanban, Users, Folder, User, ChevronDown, ChevronRight, ChevronUp } from "lucide-react"
@@ -14,6 +15,18 @@ interface ProjectsGridProps {
 }
 
 export function ProjectsGrid({ projects }: ProjectsGridProps) {
+  const router = useRouter()
+  const [navigatingProjectId, setNavigatingProjectId] = React.useState<string | null>(null)
+
+  const openProject = React.useCallback(
+    (projectId: string) => {
+      if (navigatingProjectId !== null) return
+      setNavigatingProjectId(projectId)
+      router.push(`/projects/${projectId}`)
+    },
+    [navigatingProjectId, router],
+  )
+
   const [viewMode, setViewMode] = React.useState<"folder" | "team">("folder")
   const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>({})
   const [allExpanded, setAllExpanded] = React.useState<boolean>(false)
@@ -190,7 +203,12 @@ export function ProjectsGrid({ projects }: ProjectsGridProps) {
                 >
                   <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {group.projects.map((project) => (
-                      <ProjectCard key={`project-${project._id}`} project={project} />
+                      <ProjectCard
+                        key={`project-${project._id}`}
+                        project={project}
+                        navigatingProjectId={navigatingProjectId}
+                        onOpenProject={openProject}
+                      />
                     ))}
                   </div>
                 </div>

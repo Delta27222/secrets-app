@@ -25,6 +25,7 @@ export function useProjectEnvironments() {
     setCopiedSecrets,
     dialogToOpen,
     setDialogToOpen,
+    viewingEnvironmentSlug,
     // Functions
     fetchEnvironments,
     handleViewEnvironment,
@@ -55,6 +56,7 @@ export function useProjectEnvironments() {
     setCopiedSecrets,
     dialogToOpen,
     setDialogToOpen,
+    viewingEnvironmentSlug,
     // Functions
     fetchEnvironments,
     handleViewEnvironment,

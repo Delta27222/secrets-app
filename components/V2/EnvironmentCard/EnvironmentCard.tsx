@@ -11,7 +11,7 @@ import {
 import { useProjectEnvironments } from "@/hooks";
 import { Environment } from "@/lib/api";
 import { getEnvironmentBadge } from "../Badge/EnviromentBadge";
-import { Server } from "lucide-react";
+import { Loader2, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RenderIsotipoIcon, VercelIsotipoIcon } from "@/components/ui/V2/icons";
 import {
@@ -27,10 +27,13 @@ interface EnvironmentCardProps {
 export function EnvironmentCard({ environment }: EnvironmentCardProps) {
   const {
     handleViewEnvironment,
+    viewingEnvironmentSlug,
     setDialogToOpen,
     setEnvironmentDetailsOpen,
     setSelectedEnvironment,
   } = useProjectEnvironments();
+  const detailsLoading = viewingEnvironmentSlug !== null;
+  const thisDetailsLoading = viewingEnvironmentSlug === environment.slug;
   const {
     render_token,
     render_server_id,
@@ -127,11 +130,20 @@ export function EnvironmentCard({ environment }: EnvironmentCardProps) {
       </CardContent>
       <CardFooter>
         <Button
+          type="button"
           className="w-full"
           variant="outline"
+          disabled={detailsLoading}
           onClick={() => handleViewEnvironment(environment.slug)}
         >
-          Ver Detalles
+          {thisDetailsLoading ? (
+            <>
+              <Loader2 className="animate-spin" aria-hidden />
+              Cargando…
+            </>
+          ) : (
+            "Ver Detalles"
+          )}
         </Button>
       </CardFooter>
     </Card>

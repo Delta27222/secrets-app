@@ -43,6 +43,7 @@ export default function OrganizationPage() {
     fetchAllData,
     setOrganizationId,
     fetchJustNeededData,
+    fetchOrganization,
   } = useMemberships();
   const {
     logs,
@@ -72,7 +73,7 @@ export default function OrganizationPage() {
 
   const handleOrganizationUpdated = () => {
     if (params.id) {
-      fetchJustNeededData(params.id as string)
+      fetchOrganization(params.id as string, { silent: true })
     }
   }
 

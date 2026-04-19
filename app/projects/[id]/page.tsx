@@ -64,7 +64,7 @@ export default function ProjectDetailPage() {
 
   const handleProjectUpdated = () => {
     if (params.id) {
-      fetchProject(params.id as string)
+      fetchProject(params.id as string, { silent: true })
     }
   }
 

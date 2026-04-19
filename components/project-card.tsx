@@ -4,15 +4,19 @@ import React from "react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Folder, Users } from "lucide-react"
-import Link from "next/link"
+import { Folder, Loader2, Users } from "lucide-react"
 import type { Project } from "@/lib/api"
 
 interface ProjectCardProps {
   project: Project
+  /** Cuando no es null, ningún botón "Ver Proyecto" debe aceptar otro clic */
+  navigatingProjectId: string | null
+  onOpenProject: (projectId: string) => void
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, navigatingProjectId, onOpenProject }: ProjectCardProps) {
+  const navigationLocked = navigatingProjectId !== null
+  const thisNavigating = navigatingProjectId === project._id
   return (
     <Card className="hover:shadow-md transition-shadow h-full">
       <CardHeader className="pb-3">
@@ -58,8 +62,21 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-0">
-        <Button asChild className="w-full" size="sm">
-          <Link href={`/projects/${project._id}`}>Ver Proyecto</Link>
+        <Button
+          type="button"
+          className="w-full"
+          size="sm"
+          disabled={navigationLocked}
+          onClick={() => onOpenProject(project._id)}
+        >
+          {thisNavigating ? (
+            <>
+              <Loader2 className="animate-spin" aria-hidden />
+              Cargando…
+            </>
+          ) : (
+            "Ver Proyecto"
+          )}
         </Button>
       </CardFooter>
     </Card>

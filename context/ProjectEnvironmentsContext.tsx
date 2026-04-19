@@ -35,6 +35,8 @@ export type TProjectEnvironmentsContext = {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   dialogToOpen: string;
   setDialogToOpen: React.Dispatch<React.SetStateAction<string>>;
+  /** Slug del ambiente cuyo detalle se está cargando; bloquea otros "Ver Detalles" */
+  viewingEnvironmentSlug: string | null;
 
   // Functions
   fetchEnvironments: () => Promise<void>;
@@ -67,6 +69,7 @@ export const ProjectEnvironmentsContext =
     setError: () => {},
     dialogToOpen: "",
     setDialogToOpen: () => {},
+    viewingEnvironmentSlug: null,
 
     // Functions
     fetchEnvironments: async () => {},
@@ -98,7 +101,10 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
   const [copiedSecrets, setCopiedSecrets] = React.useState<
     Record<string, boolean>
   >({});
-  const [dialogToOpen, setDialogToOpen] = React.useState<string>('');
+  const [dialogToOpen, setDialogToOpen] = React.useState<string>("");
+  const [viewingEnvironmentSlug, setViewingEnvironmentSlug] =
+    React.useState<string | null>(null);
+  const viewEnvironmentLockRef = React.useRef(false);
 
   const fetchEnvironments = React.useCallback(async () => {
     try {
@@ -115,25 +121,34 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     }
   }, [api, param.id]);
 
-  const handleViewEnvironment = React.useCallback(async (environmentSlug: string) => {
-    try {
-      const environmentDetails = await api.getEnvironmentDetails(
-        param.id as string,
-        environmentSlug
-      );
-      setSelectedEnvironment(environmentDetails);
-      setEnvironmentDetailsOpen(true);
-      setShowSecrets(false);
-      setActiveTab("view");
-      setCopiedSecrets({});
-      setDialogToOpen('secrets');
-    } catch (err) {
-      console.error("Error fetching environment details:", err);
-      setError(
-        "No se pudieron cargar los detalles del ambiente. Por favor, intenta de nuevo más tarde."
-      );
-    }
-  }, [api, param.id]);
+  const handleViewEnvironment = React.useCallback(
+    async (environmentSlug: string) => {
+      if (viewEnvironmentLockRef.current) return;
+      viewEnvironmentLockRef.current = true;
+      setViewingEnvironmentSlug(environmentSlug);
+      try {
+        const environmentDetails = await api.getEnvironmentDetails(
+          param.id as string,
+          environmentSlug
+        );
+        setSelectedEnvironment(environmentDetails);
+        setEnvironmentDetailsOpen(true);
+        setShowSecrets(false);
+        setActiveTab("view");
+        setCopiedSecrets({});
+        setDialogToOpen("secrets");
+      } catch (err) {
+        console.error("Error fetching environment details:", err);
+        setError(
+          "No se pudieron cargar los detalles del ambiente. Por favor, intenta de nuevo más tarde."
+        );
+      } finally {
+        viewEnvironmentLockRef.current = false;
+        setViewingEnvironmentSlug(null);
+      }
+    },
+    [api, param.id]
+  );
 
   const handleCopyAllSecrets = React.useCallback(() => {
     if (!selectedEnvironment) return;
@@ -252,6 +267,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
       setCopiedSecrets,
       dialogToOpen,
       setDialogToOpen,
+      viewingEnvironmentSlug,
       // Functions
       fetchEnvironments,
       handleViewEnvironment,
@@ -271,6 +287,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
       isSaving,
       copiedSecrets,
       dialogToOpen,
+      viewingEnvironmentSlug,
       fetchEnvironments,
       handleViewEnvironment,
       handleCopyAllSecrets,
