@@ -11,8 +11,9 @@ import {
 import { useProjectEnvironments } from "@/hooks";
 import { Environment } from "@/lib/api";
 import { getEnvironmentBadge } from "../Badge/EnviromentBadge";
-import { Loader2, Server } from "lucide-react";
+import { Loader2, Server, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DeleteEnvironmentDialog } from "@/components/delete-environment-dialog";
 import { RenderIsotipoIcon, VercelIsotipoIcon } from "@/components/ui/V2/icons";
 import {
   Tooltip,
@@ -23,8 +24,15 @@ import {
 
 interface EnvironmentCardProps {
   environment: Environment;
+  canDeleteEnvironment?: boolean;
+  onEnvironmentDeleted?: (environmentId: string) => void | Promise<void>;
 }
-export function EnvironmentCard({ environment }: EnvironmentCardProps) {
+
+export function EnvironmentCard({
+  environment,
+  canDeleteEnvironment = false,
+  onEnvironmentDeleted,
+}: EnvironmentCardProps) {
   const {
     handleViewEnvironment,
     viewingEnvironmentSlug,
@@ -128,23 +136,46 @@ export function EnvironmentCard({ environment }: EnvironmentCardProps) {
           </div>
         </div>
       </CardContent>
-      <CardFooter>
-        <Button
-          type="button"
-          className="w-full"
-          variant="outline"
-          disabled={detailsLoading}
-          onClick={() => handleViewEnvironment(environment.slug)}
-        >
-          {thisDetailsLoading ? (
-            <>
-              <Loader2 className="animate-spin" aria-hidden />
-              Cargando…
-            </>
-          ) : (
-            "Ver Detalles"
-          )}
-        </Button>
+      <CardFooter className="pt-0">
+        <div className="flex w-full items-stretch gap-2">
+          {canDeleteEnvironment && onEnvironmentDeleted ? (
+            <DeleteEnvironmentDialog
+              environmentId={environment._id}
+              environmentName={environment.name}
+              onDeleted={onEnvironmentDeleted}
+              disabled={detailsLoading}
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                disabled={detailsLoading}
+                aria-label="Eliminar ambiente"
+                title="Eliminar ambiente"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </DeleteEnvironmentDialog>
+          ) : null}
+          <Button
+            type="button"
+            className="min-w-0 flex-1"
+            variant="outline"
+            size="sm"
+            disabled={detailsLoading}
+            onClick={() => handleViewEnvironment(environment.slug)}
+          >
+            {thisDetailsLoading ? (
+              <>
+                <Loader2 className="animate-spin" aria-hidden />
+                Cargando…
+              </>
+            ) : (
+              "Ver Detalles"
+            )}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );
