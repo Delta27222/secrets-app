@@ -62,7 +62,7 @@ export function RenderActionsProvider({ children }: Props) {
     slug: "",
   });
 
-  async function fetchRenderData() {
+  const fetchRenderData = React.useCallback(async () => {
     try {
       setLoading(true);
       if (!selectedEnvironment?._id || !selectedEnvironment?.slug) {
@@ -88,9 +88,9 @@ export function RenderActionsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, selectedEnvironment, notify]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -112,7 +112,7 @@ export function RenderActionsProvider({ children }: Props) {
       );
       if (data) {
         notify("Datos de Render actualizados.", "success");
-        fetchEnvironments();
+        await fetchEnvironments();
         setEnvironmentDetailsOpen(false);
       }
     } catch (err) {
@@ -121,9 +121,9 @@ export function RenderActionsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedEnvironment, formData, api, notify, fetchEnvironments, setEnvironmentDetailsOpen]);
 
-  async function handleSyncToRender(e: React.FormEvent) {
+  const handleSyncToRender = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -147,7 +147,7 @@ export function RenderActionsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedEnvironment, api, notify]);
 
   const value = React.useMemo(
     () => ({
@@ -162,10 +162,7 @@ export function RenderActionsProvider({ children }: Props) {
     }),
     [
       loading,
-      setLoading,
       formData,
-      setFormData,
-      // Functions
       fetchRenderData,
       handleSubmit,
       handleSyncToRender,
