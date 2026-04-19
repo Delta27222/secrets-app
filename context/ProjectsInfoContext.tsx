@@ -67,14 +67,17 @@ export function ProjectsInfoProvider({ children }: Props) {
   const [projectMembers, setProjectMembers] = React.useState<ProjectMember[]>([]);
   const [userOrgRole, setUserOrgRole] = React.useState<string | null>(null);
 
-  async function fetchProject(projectId: string) {
+  const fetchProject = React.useCallback(async (projectId: string) => {
     try {
       setLoading(true);
-      const projectData = await api.getProject(projectId);
+      // Fetch project and members in parallel
+      const [projectData, projectMembers] = await Promise.all([
+        api.getProject(projectId),
+        api.getProjectMembers(projectId),
+      ]);
       setProject(projectData);
 
       // Obtener el rol del usuario en el proyecto
-      const projectMembers = await api.getProjectMembers(projectId);
       if (session?.user?.email) {
         const membersMap = new Map(
           projectMembers.map((member) => [member.user.email, member])
@@ -103,9 +106,9 @@ export function ProjectsInfoProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, session?.user?.email]);
 
-  async function fetchProjectMembers(projectId: string) {
+  const fetchProjectMembers = React.useCallback(async (projectId: string) => {
     try {
       setLoadingProjectMembers(true);
       const data = await api.getProjectMembers(projectId);
@@ -125,7 +128,7 @@ export function ProjectsInfoProvider({ children }: Props) {
     } finally {
       setLoadingProjectMembers(false);
     }
-  }
+  }, [api, setOrganizationId]);
 
   const value = React.useMemo(
     () => ({
@@ -143,30 +146,17 @@ export function ProjectsInfoProvider({ children }: Props) {
       setUserOrgRole,
       projectMembers,
       setProjectMembers,
-
-      //Functions
       fetchProject,
       fetchProjectMembers,
     }),
     [
       loading,
-      setLoading,
       loadingProjectMembers,
-      setLoadingProjectMembers,
-      loadingProjectMembers,
-      setLoadingProjectMembers,
       error,
-      setError,
       project,
-      setProject,
       userOrgRole,
-      setUserOrgRole,
       userProjectRole,
-      setUserProjectRole,
       projectMembers,
-      setProjectMembers,
-
-      //Functions
       fetchProject,
       fetchProjectMembers,
     ]
