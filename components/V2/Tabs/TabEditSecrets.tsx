@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useProjectEnvironments } from "@/hooks";
+import { validateEnvText } from "@/utils/parseEnvText";
 
 export function TabEditSecrets() {
   const {
@@ -13,6 +14,11 @@ export function TabEditSecrets() {
     isSaving,
     handleSaveEnvironment,
   } = useProjectEnvironments();
+
+  const isEmpty = !envText.trim();
+  const validation = validateEnvText(envText);
+  const canSave =
+    !isEmpty && validation.ok && !isSaving;
 
   // Referencia para el textarea
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -37,12 +43,20 @@ export function TabEditSecrets() {
           onChange={(e) => setEnvText(e.target.value)}
           className="font-mono text-sm h-80"
           placeholder="KEY=value"
+          aria-invalid={!isEmpty && !validation.ok}
         />
+
+        {!isEmpty && !validation.ok ? (
+          <p className="text-[11px] text-destructive" role="alert">
+            {validation.message}
+          </p>
+        ) : null}
 
         <div className="flex justify-end">
           <Button
+            type="button"
             onClick={handleSaveEnvironment}
-            disabled={isSaving}
+            disabled={!canSave}
             className="flex items-center gap-2"
           >
             {isSaving ? (

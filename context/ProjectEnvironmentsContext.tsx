@@ -8,6 +8,11 @@ import { parseEnvText } from "@/utils/parseEnvText";
 import { useParams } from "next/navigation";
 import { useNotify } from "@/hooks";
 
+export type FetchEnvironmentsOptions = {
+  /** Si es true, no activa `loading` (evita ocultar la UI al refrescar tras guardar). */
+  silent?: boolean;
+};
+
 export type TProjectEnvironmentsContext = {
   environments: Environment[];
   setEnvironments: React.Dispatch<React.SetStateAction<Environment[]>>;
@@ -39,7 +44,7 @@ export type TProjectEnvironmentsContext = {
   viewingEnvironmentSlug: string | null;
 
   // Functions
-  fetchEnvironments: () => Promise<void>;
+  fetchEnvironments: (options?: FetchEnvironmentsOptions) => Promise<void>;
   handleViewEnvironment: (environmentSlug: string) => Promise<void>;
   handleCopyAllSecrets: () => void;
   handleCopySecret: (key: string, value: string) => void;
@@ -72,7 +77,7 @@ export const ProjectEnvironmentsContext =
     viewingEnvironmentSlug: null,
 
     // Functions
-    fetchEnvironments: async () => {},
+    fetchEnvironments: async (_?: FetchEnvironmentsOptions) => {},
     handleViewEnvironment: async (_: string) => {},
     handleCopyAllSecrets: () => {},
     handleCopySecret: (_: string, __: string) => {},
@@ -106,20 +111,28 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     React.useState<string | null>(null);
   const viewEnvironmentLockRef = React.useRef(false);
 
-  const fetchEnvironments = React.useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await api.getProjectEnvironments(`${param.id}`);
-      setEnvironments(data.environments);
-    } catch (err) {
-      console.error("Error fetching environments:", err);
-      setError(
-        "No se pudieron cargar los ambientes. Por favor, intenta de nuevo más tarde."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [api, param.id]);
+  const fetchEnvironments = React.useCallback(
+    async (options?: FetchEnvironmentsOptions) => {
+      const silent = options?.silent ?? false;
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        const data = await api.getProjectEnvironments(`${param.id}`);
+        setEnvironments(data.environments);
+      } catch (err) {
+        console.error("Error fetching environments:", err);
+        setError(
+          "No se pudieron cargar los ambientes. Por favor, intenta de nuevo más tarde."
+        );
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [api, param.id],
+  );
 
   const handleViewEnvironment = React.useCallback(
     async (environmentSlug: string) => {
@@ -222,11 +235,11 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         secrets: secrets,
       });
 
-      // Refrescar la lista de ambientes
-      await fetchEnvironments();
-
-      // Cambiar a la pestaña de visualización
+      // Volver a «Ver variables» de inmediato con los datos ya guardados
       setActiveTab("view");
+
+      // Refrescar la lista en segundo plano (sin pantalla de carga)
+      await fetchEnvironments({ silent: true });
 
       notify(
         "Las variables de entorno han sido actualizadas correctamente.",

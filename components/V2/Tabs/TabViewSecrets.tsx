@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Eye, EyeOff, Copy, Check, Save } from "lucide-react";
+import { Eye, EyeOff, Copy, Check, Save, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
 import {
@@ -22,6 +22,7 @@ export function TabViewSecrets() {
     handleCopyAllSecrets,
     handleCopySecret,
     setDialogToOpen,
+    setActiveTab,
   } = useProjectEnvironments();
 
   const { fetchVercelData, loading: synToVercelLoading } = useVercelActions();
@@ -66,10 +67,19 @@ export function TabViewSecrets() {
 
       {!selectedEnvironment ||
       Object.keys(selectedEnvironment.secrets || {}).length === 0 ? (
-        <div className="text-center py-6 bg-muted rounded-md">
-          <p className="text-muted-foreground">
+        <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-6 text-center">
+          <p className="text-sm text-muted-foreground">
             No hay variables configuradas en este ambiente.
           </p>
+          <Button
+            type="button"
+            variant="link"
+            className="mt-2 h-auto gap-1.5 p-0 text-sm font-medium"
+            onClick={() => setActiveTab("edit")}
+          >
+            <Plus className="h-4 w-4 shrink-0" aria-hidden />
+            Agregar variables
+          </Button>
         </div>
       ) : (
         <div className="border rounded-md overflow-hidden">
