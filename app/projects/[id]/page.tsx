@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -14,13 +15,14 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Home, Layers, Users, Logs} from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ProjectEnvironments } from "@/components/project-environments"
-import { ProjectMembers } from "@/components/project-members"
-import { ProjectSettings } from "@/components/project-settings"
 import { useProjectsInfo } from "@/hooks"
 import { useLogs } from "@/hooks/useLogs"
-import LogsTable from "@/components/V2/Logs/LogsTable"
 import { customEnvironmentsColumns } from "@/components/V2/Columns/EnvironmentsColumns"
+
+const ProjectEnvironments = dynamic(() => import("@/components/project-environments").then(mod => ({ default: mod.ProjectEnvironments })))
+const ProjectMembers = dynamic(() => import("@/components/project-members").then(mod => ({ default: mod.ProjectMembers })))
+const ProjectSettings = dynamic(() => import("@/components/project-settings").then(mod => ({ default: mod.ProjectSettings })))
+const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
 
 export default function ProjectDetailPage() {
   const { data: session, status } = useSession()
