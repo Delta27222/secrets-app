@@ -4,10 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import {
   MembershipsProvider,
-  ProjectEnvironmentsProvider,
-  RenderActionsProvider,
   ToastContextProvider,
-  VercelActionsProvider,
 } from "@/context";
 import { ProjectsInfoProvider } from "@/context/ProjectsInfoContext";
 import { LogsProvider } from "@/context/LogsContext";
@@ -29,20 +26,16 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
-            <MembershipsProvider>
-              <ProjectsInfoProvider>
-                <ToastContextProvider>
-                  <ProjectEnvironmentsProvider>
-                    <LogsProvider>
-                      <RenderActionsProvider>
-                        <VercelActionsProvider>{children}</VercelActionsProvider>
-                      </RenderActionsProvider>
-                    </LogsProvider>
-                  </ProjectEnvironmentsProvider>
+          <MembershipsProvider>
+            <ProjectsInfoProvider>
+              <ToastContextProvider>
+                <LogsProvider>
+                  {children}
                   <div id="toast" />
-                </ToastContextProvider>
-              </ProjectsInfoProvider>
-            </MembershipsProvider>
+                </LogsProvider>
+              </ToastContextProvider>
+            </ProjectsInfoProvider>
+          </MembershipsProvider>
         </AuthProvider>
       </body>
     </html>
