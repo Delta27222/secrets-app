@@ -178,9 +178,6 @@ export async function fetchWithAuth(
     ...options.headers,
   }
 
-  console.log("Realizando petición a:", `${API_URL}${url}`)
-  console.log("Headers:", headers)
-
   return fetch(`${API_URL}${url}`, {
     ...options,
     headers,
@@ -195,11 +192,9 @@ export class ApiClient {
   constructor(token?: string, tokenType?: string) {
     this.token = token
     this.tokenType = tokenType || "Bearer"
-    console.log("ApiClient inicializado con token:", token ? "presente" : "ausente")
   }
 
   setToken(token?: string, tokenType?: string) {
-    console.log("Actualizando token en ApiClient:", token ? "presente" : "ausente")
     this.token = token
     this.tokenType = tokenType || "Bearer"
   }
