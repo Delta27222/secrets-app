@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -10,10 +11,11 @@ import { useApi, useApiReady } from "@/components/api-provider"
 import { Building2, Lock, Plus, Users } from "lucide-react"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PendingInvitations } from "@/components/pending-invitations"
-import { CreateOrganizationForm } from "@/components/create-organization-form"
 import { useMemberships } from "@/hooks"
 import { Loading } from "@/components/V2/Common/Loading"
+
+const PendingInvitations = dynamic(() => import("@/components/pending-invitations").then(mod => ({ default: mod.PendingInvitations })))
+const CreateOrganizationForm = dynamic(() => import("@/components/create-organization-form").then(mod => ({ default: mod.CreateOrganizationForm })))
 
 export default function Home() {
   const {
@@ -31,7 +33,6 @@ export default function Home() {
   React.useEffect(() => {
     if (status === "authenticated") {
       api.setToken(session.accessToken)
-      console.log("API lista, obteniendo membresías de organizaciones")
       fetchUserOrganizationMembership()
     }
   }, [status, apiReady])
