@@ -16,8 +16,8 @@ interface ProjectsGridProps {
 export function ProjectsGrid({ projects }: ProjectsGridProps) {
   const [viewMode, setViewMode] = React.useState<"folder" | "team">("folder")
   const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>({})
-  const [allExpanded, setAllExpanded] = React.useState(false)
-  const [isInitialized, setIsInitialized] = React.useState(false)
+  const [allExpanded, setAllExpanded] = React.useState<boolean>(false)
+  const [isInitialized, setIsInitialized] = React.useState<boolean>(false)
 
   // Memoizar la función de agrupación para evitar recálculos innecesarios
   const groupProjects = React.useMemo(() => {
