@@ -69,10 +69,12 @@ export function LogsProvider({ children }: Props) {
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [perPage, setPerPage] = React.useState<number>(5);
   const [users, setUsers] = React.useState<MinimalUser[]>([]);
+  const lastFetchTypeRef = React.useRef<'org' | 'env'>('org');
 
-  async function fetchEnvironmentsLogs(page: number = currentPage, perPageParam: number = perPage) {
+  const fetchEnvironmentsLogs = React.useCallback(async (page: number = currentPage, perPageParam: number = perPage) => {
     try {
       setLoading(true);
+      lastFetchTypeRef.current = 'env';
       const response = await api.getEnvironmentsLogs(
         environments.map(environment => environment._id),
         page,
@@ -89,11 +91,12 @@ export function LogsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, currentPage, perPage, environments]);
 
-  async function fetchOrganizationLogs(page: number = currentPage, perPageParam: number = perPage) {
+  const fetchOrganizationLogs = React.useCallback(async (page: number = currentPage, perPageParam: number = perPage) => {
     try {
       setLoading(true);
+      lastFetchTypeRef.current = 'org';
       const response = await api.getAllLogs(page, perPageParam);
 
       // Change the user id to the user object
@@ -106,24 +109,30 @@ export function LogsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, currentPage, perPage]);
 
-  async function goToPage(page: number) {
+  const goToPage = React.useCallback(async (page: number) => {
     if (pagination && page >= 1 && page <= pagination.total_pages) {
-      // Determine which fetch function to use based on current context
-      // This is a simplified approach - you might want to track the current mode
-      await fetchOrganizationLogs(page, perPage);
+      if (lastFetchTypeRef.current === 'env') {
+        await fetchEnvironmentsLogs(page, perPage);
+      } else {
+        await fetchOrganizationLogs(page, perPage);
+      }
     }
-  }
+  }, [pagination, perPage, fetchEnvironmentsLogs, fetchOrganizationLogs]);
 
-  async function changePerPage(newPerPage: number) {
+  const changePerPage = React.useCallback(async (newPerPage: number) => {
     setPerPage(newPerPage);
     setCurrentPage(1); // Reset to first page when changing per page
-    await fetchOrganizationLogs(1, newPerPage);
-  }
+    if (lastFetchTypeRef.current === 'env') {
+      await fetchEnvironmentsLogs(1, newPerPage);
+    } else {
+      await fetchOrganizationLogs(1, newPerPage);
+    }
+  }, [fetchEnvironmentsLogs, fetchOrganizationLogs]);
 
   // Function to fetch users if not in cache
-  async function fetchUsersIfNeeded() {
+  const fetchUsersIfNeeded = React.useCallback(async () => {
     if (users.length === 0) {
       try {
         const response = await api.getMinimalUsers();
@@ -143,9 +152,9 @@ export function LogsProvider({ children }: Props) {
       }
     }
     return users;
-  }
+  }, [api, users]);
 
-  async function enrichLogsWithUsers(logsData: Log[]): Promise<EnrichedLog[]> {
+  const enrichLogsWithUsers = React.useCallback(async (logsData: Log[]): Promise<EnrichedLog[]> => {
     // Validate input
     if (!Array.isArray(logsData) || logsData.length === 0) {
       console.warn("No logs data provided or empty array");
@@ -233,7 +242,7 @@ export function LogsProvider({ children }: Props) {
         };
       });
     }
-  }
+  }, [fetchUsersIfNeeded]);
 
 
   const value = React.useMemo(
@@ -256,16 +265,10 @@ export function LogsProvider({ children }: Props) {
     }),
     [
       loading,
-      setLoading,
       logs,
-      setLogs,
       pagination,
-      setPagination,
       currentPage,
-      setCurrentPage,
       perPage,
-      setPerPage,
-      // Functions
       fetchEnvironmentsLogs,
       fetchOrganizationLogs,
       goToPage,

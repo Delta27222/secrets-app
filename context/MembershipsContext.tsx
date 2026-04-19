@@ -5,6 +5,11 @@ import { useApi, useApiReady } from "@/components/api-provider";
 import { Organization, OrganizationMembership, OrganizationMembershipDetail, Project } from "@/lib/api";
 import { useSession } from "next-auth/react";
 
+export type FetchOrganizationOptions = {
+  /** Si es true, no activa `loadingOgr` (evita pantalla completa al refrescar tras guardar). */
+  silent?: boolean;
+};
+
 export type TMembershipsContext = {
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -35,7 +40,7 @@ export type TMembershipsContext = {
   fetchOrganizationMembers: (organizationId: string) => Promise<void>;
   fetchAllData: (organizationId: string) => Promise<void>;
   fetchUserRole: (organizationId: string) => Promise<void>;
-  fetchOrganization: (organizationId: string) => Promise<void>;
+  fetchOrganization: (organizationId: string, options?: FetchOrganizationOptions) => Promise<void>;
   fetchUserOrganizationMembership: () => Promise<void>;
   fetchMyProjectsByOrganization: (organizationId: string) => Promise<void>;
   fetchJustNeededData: (organizationId: string) => Promise<void>;
@@ -68,7 +73,7 @@ export const MembershipsContext = React.createContext<TMembershipsContext>({
   fetchOrganizationMembers: async (organizationId: string) => {},
   fetchAllData: async () => {},
   fetchUserRole: async () => {},
-  fetchOrganization: async () => {},
+  fetchOrganization: async (_: string, __?: FetchOrganizationOptions) => {},
   fetchUserOrganizationMembership: async () => {},
   fetchMyProjectsByOrganization: async () => {},
   fetchJustNeededData: async (organizationId: string) => {},
@@ -101,7 +106,7 @@ export function MembershipsProvider({ children }: Props) {
   const [loadingMemberships, setLoadingMemberships] =
     React.useState<boolean>(false);
 
-  async function fetchAllData(organizationId: string) {
+  const fetchAllData = React.useCallback(async (organizationId: string) => {
     try {
       setLoading(true);
       const [orgData, projectsData, membershipsData] = await Promise.all([
@@ -130,9 +135,9 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, session?.user?.email]);
 
-  async function fetchUserRole(organizationId: string) {
+  const fetchUserRole = React.useCallback(async (organizationId: string) => {
     try {
       setLoadingMemberships(true);
       const membershipsData = await api.getOrganizationMemberships(organizationId);
@@ -154,30 +159,36 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingMemberships(false);
     }
-  }
+  }, [api, session?.user?.email]);
 
-  async function fetchOrganization(organizationId: string) {
-    setOrganizationId(organizationId);
-    try {
-      setLoadingOgr(true);
-      const data = await api.getOrganization(organizationId);
-      setOrganization(data);
-    } catch (err) {
-      console.error("Error fetching organization:", err);
-      setError(
-        "No se pudieron cargar los datos de la organización. Por favor, intenta de nuevo más tarde."
-      );
-    } finally {
-      setLoadingOgr(false);
-    }
-  }
+  const fetchOrganization = React.useCallback(
+    async (organizationId: string, options?: FetchOrganizationOptions) => {
+      const silent = options?.silent ?? false;
+      setOrganizationId(organizationId);
+      try {
+        if (!silent) {
+          setLoadingOgr(true);
+        }
+        const data = await api.getOrganization(organizationId);
+        setOrganization(data);
+      } catch (err) {
+        console.error("Error fetching organization:", err);
+        setError(
+          "No se pudieron cargar los datos de la organización. Por favor, intenta de nuevo más tarde."
+        );
+      } finally {
+        if (!silent) {
+          setLoadingOgr(false);
+        }
+      }
+    },
+    [api],
+  );
 
-  async function fetchUserOrganizationMembership() {
+  const fetchUserOrganizationMembership = React.useCallback(async () => {
     try {
       setLoadingMemberships(true);
-      console.log("Iniciando petición para obtener membresías");
       const data = await api.getMyOrganizationMemberships();
-      console.log("Membresías obtenidas:", data);
       setMemberships(data);
     } catch (err) {
       console.error("Error fetching organization memberships:", err);
@@ -187,9 +198,9 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingMemberships(false);
     }
-  }
+  }, [api]);
 
-  async function fetchMyProjectsByOrganization(organizationId: string) {
+  const fetchMyProjectsByOrganization = React.useCallback(async (organizationId: string) => {
     setOrganizationId(organizationId);
     try {
       setLoadingProjects(true);
@@ -203,28 +214,34 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoadingProjects(false);
     }
-  }
+  }, [api]);
 
-  async function fetchJustNeededData(organizationId: string) {
+  const fetchJustNeededData = React.useCallback(async (organizationId: string) => {
     if (status === "authenticated") {
       api.setToken(session.accessToken);
       setOrganizationId(organizationId);
+      const promises: Promise<unknown>[] = [];
+
       if (!userRole) {
         setLoadingMemberships(true);
-        await fetchUserRole(organizationId);
+        promises.push(fetchUserRole(organizationId));
       }
       if (!organization) {
         setLoadingOgr(true);
-        await fetchOrganization(organizationId);
+        promises.push(fetchOrganization(organizationId));
       }
       if (!projects.length) {
         setLoadingProjects(true);
-        await fetchMyProjectsByOrganization(organizationId);
+        promises.push(fetchMyProjectsByOrganization(organizationId));
+      }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
       }
     }
-  }
+  }, [status, api, session?.accessToken, userRole, organization, projects.length, fetchUserRole, fetchOrganization, fetchMyProjectsByOrganization]);
 
-  async function fetchOrganizationMembers(organizationId: string) {
+  const fetchOrganizationMembers = React.useCallback(async (organizationId: string) => {
     try {
       setLoading(true)
       const data = await api.getOrganizationMemberships(organizationId)
@@ -235,7 +252,7 @@ export function MembershipsProvider({ children }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [api]);
 
   const value = React.useMemo(
     () => ({
@@ -273,29 +290,16 @@ export function MembershipsProvider({ children }: Props) {
     }),
     [
       loading,
-      setLoading,
       memberships,
-      setMemberships,
       error,
-      setError,
       userRole,
-      setUserRole,
       organizationId,
-      setOrganizationId,
       organization,
-      setOrganization,
       members,
-      setMembers,
       projects,
-      setProjects,
       loadingOgr,
-      setLoadingOgr,
       loadingProjects,
-      setLoadingProjects,
       loadingMemberships,
-      setLoadingMemberships,
-
-      //Functions
       fetchAllData,
       fetchOrganizationMembers,
       fetchUserRole,

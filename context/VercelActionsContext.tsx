@@ -93,7 +93,7 @@ export function VercelActionsProvider({ children }: Props) {
   const [targets, setTargets] = React.useState<string[]>([]);
   const [loadingTargets, setLoadingTargets] = React.useState<boolean>(true);
 
-  async function fetchVercelData() {
+  const fetchVercelData = React.useCallback(async () => {
     try {
       setLoading(true);
       if (!selectedEnvironment?._id || !selectedEnvironment?.slug) {
@@ -120,9 +120,9 @@ export function VercelActionsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [api, selectedEnvironment, notify]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -145,7 +145,7 @@ export function VercelActionsProvider({ children }: Props) {
       );
       if (data) {
         notify("Datos de Vercel actualizados.", "success");
-        fetchEnvironments();
+        await fetchEnvironments();
         setEnvironmentDetailsOpen(false);
       }
     } catch (err) {
@@ -154,13 +154,13 @@ export function VercelActionsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedEnvironment, formData, api, notify, fetchEnvironments, setEnvironmentDetailsOpen]);
 
-  async function handleSyncToVercel(
+  const handleSyncToVercel = React.useCallback(async (
     e: React.FormEvent,
     removeMismatches = false,
     targetName = ""
-  ) {
+  ) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -174,7 +174,6 @@ export function VercelActionsProvider({ children }: Props) {
         removeMismatches,
         targetName
       );
-      console.log("🚀 ~ VercelActionsProvider ~ data:", data)
       if (data.code === "success" || data.code === "success_removed_mismatched_secrets") {
         notify("Secretos sincronizados con Vercel.", "success");
         setDialogToOpen("secrets");
@@ -185,9 +184,9 @@ export function VercelActionsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedEnvironment, api, notify, setDialogToOpen]);
 
-  async function handleGetVercelMismatches(e: React.FormEvent) {
+  const handleGetVercelMismatches = React.useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -200,7 +199,7 @@ export function VercelActionsProvider({ children }: Props) {
         selectedEnvironment.slug
       );
       if (data?.mismatches?.secretsMismatched?.length === 0) {
-        handleSyncToVercel(e, false, formData.vercel_target[0]);
+        await handleSyncToVercel(e, false, formData.vercel_target[0]);
         return;
       }
       setMismatches(data.mismatches.secretsMismatched || []);
@@ -211,9 +210,9 @@ export function VercelActionsProvider({ children }: Props) {
       console.error("Error al obtener mismatches de Vercel:", err);
       notify("Error al obtener los mismatches de Vercel.", "error");
     }
-  }
+  }, [selectedEnvironment, api, notify, formData, handleSyncToVercel, setDialogToOpen]);
 
-  async function fetchVercelProjectTargets() {
+  const fetchVercelProjectTargets = React.useCallback(async () => {
     const isValid = isValidVercelCredentials(formData.vercel_project_id, formData.vercel_token);
     if (!isValid) {
       setDialogToOpen("vercel");
@@ -242,7 +241,7 @@ export function VercelActionsProvider({ children }: Props) {
     } finally {
       setLoadingTargets(false);
     }
-  }
+  }, [formData, selectedEnvironment, api, notify, setDialogToOpen]);
 
   const value = React.useMemo(
     () => ({
@@ -265,16 +264,10 @@ export function VercelActionsProvider({ children }: Props) {
     }),
     [
       loading,
-      setLoading,
       formData,
-      setFormData,
       mismatches,
-      setMismatches,
       targets,
-      setTargets,
       loadingTargets,
-      setLoadingTargets,
-      // Functions
       fetchVercelData,
       handleSubmit,
       handleSyncToVercel,

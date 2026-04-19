@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
@@ -14,16 +15,15 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Home, FolderKanban, Users, Logs } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { OrganizationMembers } from "@/components/organization-members"
-import { OrganizationSettings } from "@/components/organization-settings"
-// Importar el componente CreateProjectForm
 import { CreateProjectForm } from "@/components/create-project-form"
 import { ProjectsGrid } from "@/components/projects-grid"
 import { useMemberships } from "@/hooks"
-import LogsTable from "@/components/V2/Logs/LogsTable"
 import { useLogs } from "@/hooks/useLogs"
 import { defaultLogsColumns } from "@/components/V2/Columns/DefaultColumns"
 
+const OrganizationMembers = dynamic(() => import("@/components/organization-members").then(mod => ({ default: mod.OrganizationMembers })))
+const OrganizationSettings = dynamic(() => import("@/components/organization-settings").then(mod => ({ default: mod.OrganizationSettings })))
+const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
 
 export default function OrganizationPage() {
   const api = useApi()
@@ -43,6 +43,7 @@ export default function OrganizationPage() {
     fetchAllData,
     setOrganizationId,
     fetchJustNeededData,
+    fetchOrganization,
   } = useMemberships();
   const {
     logs,
@@ -59,7 +60,6 @@ export default function OrganizationPage() {
   React.useEffect(() => {
     if (status === "authenticated" && params.id) {
       api.setToken(session.accessToken)
-      console.log("API lista, obteniendo datos de la organización")
       setOrganizationId(params.id as string)
       fetchJustNeededData(params.id as string)
     }
@@ -73,7 +73,7 @@ export default function OrganizationPage() {
 
   const handleOrganizationUpdated = () => {
     if (params.id) {
-      fetchJustNeededData(params.id as string)
+      fetchOrganization(params.id as string, { silent: true })
     }
   }
 

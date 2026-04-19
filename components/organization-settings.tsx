@@ -50,6 +50,18 @@ export function OrganizationSettings({ organization, onOrganizationUpdated, user
     slug: organization.slug, // Usando el ID como slug inicial
   })
 
+  const prevEditDialogOpen = React.useRef(false)
+  React.useEffect(() => {
+    const justOpened = editDialogOpen && !prevEditDialogOpen.current
+    prevEditDialogOpen.current = editDialogOpen
+    if (justOpened) {
+      setFormData({
+        name: organization.name,
+        slug: organization.slug,
+      })
+    }
+  }, [editDialogOpen, organization])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))

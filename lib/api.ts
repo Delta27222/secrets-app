@@ -119,6 +119,19 @@ export interface EnvironmentsResponse {
   environments_count: number
 }
 
+/** Cuerpo para POST /v1/environments/ (clave `environment` en el JSON). */
+export interface EnvironmentCreatePayload {
+  project_id: string
+  name: string
+  slug: string
+  render_server_id?: string | null
+  render_token?: string | null
+  vercel_project_id?: string | null
+  vercel_token?: string | null
+  vercel_target?: string[] | null
+  secrets?: Record<string, string>
+}
+
 export interface ProjectMember {
   _id: string
   user: {
@@ -178,9 +191,6 @@ export async function fetchWithAuth(
     ...options.headers,
   }
 
-  console.log("Realizando petición a:", `${API_URL}${url}`)
-  console.log("Headers:", headers)
-
   return fetch(`${API_URL}${url}`, {
     ...options,
     headers,
@@ -195,11 +205,9 @@ export class ApiClient {
   constructor(token?: string, tokenType?: string) {
     this.token = token
     this.tokenType = tokenType || "Bearer"
-    console.log("ApiClient inicializado con token:", token ? "presente" : "ausente")
   }
 
   setToken(token?: string, tokenType?: string) {
-    console.log("Actualizando token en ApiClient:", token ? "presente" : "ausente")
     this.token = token
     this.tokenType = tokenType || "Bearer"
   }
@@ -491,6 +499,45 @@ export class ApiClient {
       throw new Error(`Error al obtener detalles del ambiente: ${response.status} ${errorText}`)
     }
     return response.json()
+  }
+
+  async createEnvironment(payload: EnvironmentCreatePayload): Promise<Environment> {
+    const body: EnvironmentCreatePayload = {
+      project_id: payload.project_id,
+      name: payload.name,
+      slug: payload.slug,
+      render_server_id: payload.render_server_id ?? null,
+      render_token: payload.render_token ?? null,
+      vercel_project_id: payload.vercel_project_id ?? null,
+      vercel_token: payload.vercel_token ?? null,
+      vercel_target: payload.vercel_target ?? null,
+      secrets: payload.secrets ?? {},
+    }
+    const response = await fetchWithAuth(`/v1/environments/`, this.token, this.tokenType, {
+      method: "POST",
+      body: JSON.stringify({ environment: body }),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en createEnvironment:", response.status, errorText)
+      throw new Error(errorText || `Error al crear el ambiente: ${response.status}`)
+    }
+    return response.json()
+  }
+
+  async deleteEnvironment(environmentId: string): Promise<void> {
+    const response = await fetchWithAuth(
+      `/v1/environments/${environmentId}`,
+      this.token,
+      this.tokenType,
+      { method: "DELETE" },
+    )
+    if (response.ok) {
+      return
+    }
+    const errorText = await response.text()
+    console.error("Error en deleteEnvironment:", response.status, errorText)
+    throw new Error(errorText || `Error al eliminar el ambiente: ${response.status}`)
   }
 
   async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
