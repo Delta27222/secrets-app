@@ -99,12 +99,20 @@ export interface ProjectDetail {
   updatedAt: string
 }
 
+export interface SecretsEncryptionMetadata {
+  key_version: number | null
+  encrypted_with_key_id: string | null
+  encrypted_at: string | null
+  requires_reencryption: boolean
+}
+
 export interface Environment {
   _id: string
   name: string
   slug: string
   project_id: string
   secrets: Record<string, string>
+  secrets_encryption?: SecretsEncryptionMetadata | null
   createdAt: string
   updatedAt: string
   render_token?: string;
