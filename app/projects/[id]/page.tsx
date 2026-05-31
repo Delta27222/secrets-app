@@ -2,8 +2,7 @@
 
 import React from "react"
 import dynamic from "next/dynamic"
-import { useSession } from "next-auth/react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { useApi } from "@/components/api-provider"
 import {
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Home, Layers, Users, Logs} from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useProjectsInfo } from "@/hooks"
+import { useProjectsInfo, useRequireAuth } from "@/hooks"
 import { useLogs } from "@/hooks/useLogs"
 import { customEnvironmentsColumns } from "@/components/V2/Columns/EnvironmentsColumns"
 
@@ -25,9 +24,8 @@ const ProjectSettings = dynamic(() => import("@/components/project-settings").th
 const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
 
 export default function ProjectDetailPage() {
-  const { data: session, status } = useSession()
+  const { session, isLoading: authLoading, isRedirecting } = useRequireAuth()
   const params = useParams()
-  const router = useRouter()
   const api = useApi()
   const [activeTab, setActiveTab] = React.useState("environments")
 
@@ -50,11 +48,11 @@ export default function ProjectDetailPage() {
   } = useLogs()
 
   React.useEffect(() => {
-    if (status === "authenticated" && params.id) {
+    if (session?.accessToken && params.id) {
       api.setToken(session.accessToken)
       fetchProject(params.id as string)
     }
-  }, [status, params.id])
+  }, [session, params.id])
 
   React.useEffect(() => {
     if (activeTab === "logs") {
@@ -69,7 +67,7 @@ export default function ProjectDetailPage() {
   }
 
 
-  if (status === "loading" || loading ) {
+  if (authLoading || isRedirecting || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -78,11 +76,6 @@ export default function ProjectDetailPage() {
         </div>
       </div>
     )
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin")
-    return null
   }
 
   if (error) {
