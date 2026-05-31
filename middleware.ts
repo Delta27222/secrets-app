@@ -15,6 +15,12 @@ export async function middleware(req: NextRequest) {
   if (isProtectedPath && !session) {
     const url = new URL(`/auth/signin`, req.url)
     url.searchParams.set("callbackUrl", req.nextUrl.pathname)
+    const hadSessionCookie =
+      req.cookies.has("next-auth.session-token") ||
+      req.cookies.has("__Secure-next-auth.session-token")
+    if (hadSessionCookie) {
+      url.searchParams.set("expired", "1")
+    }
     return NextResponse.redirect(url)
   }
 
