@@ -6,3 +6,4 @@ export * from './useVercelActions';
 export * from './useNotify';
 export * from './useMemberships';
 export * from './useProjectsInfo';
+export * from './useRequireAuth';
