@@ -3,6 +3,7 @@ import * as React from "react"
 
 import { SessionProvider, useSession } from "next-auth/react"
 import { SESSION_REFETCH_INTERVAL_SECONDS } from "@/lib/auth-session-config"
+import { ActivityHeartbeatListener } from "./activity-heartbeat-listener"
 
 const isDev = process.env.NODE_ENV === "development"
 
@@ -34,11 +35,12 @@ function SessionDebugLogger() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider
-      // Poll alineado con SESSION_MAX_AGE_SECONDS para detectar expiración pronto
+      // Sin polling automático: heartbeat por actividad lo reemplaza
       refetchInterval={SESSION_REFETCH_INTERVAL_SECONDS}
       refetchOnWindowFocus={true}
     >
       <SessionDebugLogger />
+      <ActivityHeartbeatListener />
       {children}
     </SessionProvider>
   )
