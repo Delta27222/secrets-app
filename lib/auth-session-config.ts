@@ -4,20 +4,46 @@ import { v4 as uuid } from "uuid"
 import type { JWT } from "next-auth/jwt"
 import type { JWTEncodeParams } from "next-auth/jwt"
 
-/** Duración fija de sesión en segundos. Pruebas: 60 (1 min). Producción: 15 * 60 (15 min) */
-export const SESSION_MAX_AGE_SECONDS = 15 * 60
+/**
+ * Configuración de sesión según environment.
+ * Basado en NODE_ENV (production | development)
+ */
+const SESSION_CONFIG = {
+  production: {
+    maxAgeSeconds: 30 * 60,      // 30 minutos sin actividad
+    heartbeatIntervalMs: 2 * 60 * 1000, // Renovar cada 2 minutos
+  },
+  development: {
+    maxAgeSeconds: 1 * 60,       // 1 minuto sin actividad (testing rápido)
+    heartbeatIntervalMs: 30 * 1000,     // Renovar cada 30 segundos
+  },
+}
+
+const isProduction = process.env.NODE_ENV === "production"
+const config = isProduction ? SESSION_CONFIG.production : SESSION_CONFIG.development
 
 /**
- * NextAuth con JWT renueva el token en cada GET /api/auth/session (sesión rodante).
- * updateAge solo aplica a estrategia "database"; con JWT hay que fijar exp absoluto.
+ * Sesión máxima sin actividad (segundos).
+ * Frontend detecta actividad y renueva sesión continuamente.
+ * Si inactividad > SESSION_MAX_AGE_SECONDS, sesión caduca.
  */
+export const SESSION_MAX_AGE_SECONDS = config.maxAgeSeconds
+
+/**
+ * Heartbeat activity tracking.
+ * Frontend envía heartbeat cada HEARTBEAT_INTERVAL_MS si hay actividad detectada.
+ */
+export const HEARTBEAT_INTERVAL_MS = config.heartbeatIntervalMs
+
+export const ACTIVITY_DEBOUNCE_MS = 500 // Debounce detectores de actividad (fijo)
+
 export const SESSION_STARTED_AT_KEY = "sessionStartedAt"
 
-/** Poll del cliente: ~4 veces dentro del maxAge para detectar expiración pronto */
-export const SESSION_REFETCH_INTERVAL_SECONDS = Math.max(
-  5,
-  Math.floor(SESSION_MAX_AGE_SECONDS / 4),
-)
+/**
+ * Ya no hacemos polling automático de sesión.
+ * El heartbeat de actividad reemplaza esto.
+ */
+export const SESSION_REFETCH_INTERVAL_SECONDS = 0 // Deshabilitado
 
 async function getDerivedEncryptionKey(keyMaterial: string, salt: string) {
   return hkdf(
