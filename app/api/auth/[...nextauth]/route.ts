@@ -3,6 +3,7 @@ import GithubProvider from "next-auth/providers/github"
 import {
   SESSION_MAX_AGE_SECONDS,
   SESSION_REFETCH_INTERVAL_SECONDS,
+  SESSION_STARTED_AT_KEY,
   encodeAbsoluteSession,
   ensureSessionStartedAt,
   getSessionExpiresAtUnix,
@@ -109,19 +110,10 @@ const handler = NextAuth({
       return true
     },
     async jwt({ token, account, profile }) {
-      if (isSessionExpired(token)) {
-        logAuthDebug("jwt: sesión expirada (no se renueva)", {
-          email: token.email as string | undefined,
-          ...tokenExpiryDetails(token),
-        })
-        throw new Error("SESSION_EXPIRED")
-      }
-
-      token = ensureSessionStartedAt(token, !!(account && profile))
-
       // Cuando se completa la autenticación inicial, 'account' contiene el token de acceso
       if (account && profile) {
-        // Guardamos el token de acceso en el JWT
+        // Nuevo login: reiniciar startedAt para refresh basado en actividad
+        token[SESSION_STARTED_AT_KEY] = Math.floor(Date.now() / 1000)
         token.accessToken = account.access_token
         token.tokenType = account.token_type
 
@@ -134,16 +126,20 @@ const handler = NextAuth({
           token.email = userData.email || token.email
         }
 
-        logAuthDebug("jwt: login (nueva sesión)", {
+        logAuthDebug("jwt: login (nueva sesión con heartbeat)", {
           email: token.email as string | undefined,
-          ...tokenExpiryDetails(token),
+          sessionStartedAt: new Date((token[SESSION_STARTED_AT_KEY] as number) * 1000).toISOString(),
         })
-      } else if (isDev) {
-        logAuthDebug("jwt: refresh (exp absoluta, sin extender)", {
-          email: token.email as string | undefined,
-          absoluteExpiresUnix: getSessionExpiresAtUnix(token),
-          ...tokenExpiryDetails(token),
-        })
+      } else {
+        // Refresh: extender sessionStartedAt para mantener sesión viva por actividad
+        token[SESSION_STARTED_AT_KEY] = Math.floor(Date.now() / 1000)
+
+        if (isDev) {
+          logAuthDebug("jwt: refresh (heartbeat renueva sesión)", {
+            email: token.email as string | undefined,
+            sessionStartedAt: token[SESSION_STARTED_AT_KEY] as number,
+          })
+        }
       }
 
       return token
