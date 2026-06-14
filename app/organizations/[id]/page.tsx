@@ -2,8 +2,7 @@
 
 import React from "react"
 import dynamic from "next/dynamic"
-import { useSession } from "next-auth/react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { useApi } from "@/components/api-provider"
 import {
@@ -17,7 +16,7 @@ import { Home, FolderKanban, Users, Logs } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateProjectForm } from "@/components/create-project-form"
 import { ProjectsGrid } from "@/components/projects-grid"
-import { useMemberships } from "@/hooks"
+import { useMemberships, useRequireAuth } from "@/hooks"
 import { useLogs } from "@/hooks/useLogs"
 import { defaultLogsColumns } from "@/components/V2/Columns/DefaultColumns"
 
@@ -28,8 +27,7 @@ const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
 export default function OrganizationPage() {
   const api = useApi()
   const params = useParams()
-  const router = useRouter()
-  const { data: session, status } = useSession()
+  const { session, isLoading: authLoading, isRedirecting } = useRequireAuth()
   const [activeTab, setActiveTab] = React.useState("projects")
 
   const {
@@ -58,12 +56,12 @@ export default function OrganizationPage() {
   const loading = loadingOgr || loadingProjects || loadingMemberships;
 
   React.useEffect(() => {
-    if (status === "authenticated" && params.id) {
+    if (session?.accessToken && params.id) {
       api.setToken(session.accessToken)
       setOrganizationId(params.id as string)
       fetchJustNeededData(params.id as string)
     }
-  }, [status, params.id])
+  }, [session, params.id])
 
   React.useEffect(() => {
     if (activeTab === "logs") {
@@ -77,7 +75,7 @@ export default function OrganizationPage() {
     }
   }
 
-  if (status === "loading" || loading) {
+  if (authLoading || isRedirecting || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -86,11 +84,6 @@ export default function OrganizationPage() {
         </div>
       </div>
     )
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin")
-    return null
   }
 
   if (error) {

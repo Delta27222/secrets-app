@@ -2,14 +2,12 @@
 
 import React from "react"
 import dynamic from "next/dynamic"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { useApi, useApiReady } from "@/components/api-provider"
 import { Building2, Plus } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useMemberships } from "@/hooks"
+import { useMemberships, useRequireAuth } from "@/hooks"
 import { Loading } from "@/components/V2/Common/Loading"
 import { OrganizationsGrid } from "@/components/V2/Organization/OrganizationsGrid"
 
@@ -24,25 +22,19 @@ export default function Home() {
     fetchUserOrganizationMembership,
   } = useMemberships();
   const api = useApi();
-  const router = useRouter();
   const apiReady = useApiReady();
-  const { data: session, status } = useSession();
+  const { session, isLoading: authLoading, isRedirecting } = useRequireAuth();
   const [activeTab, setActiveTab] = React.useState("organizations");
 
   React.useEffect(() => {
-    if (status === "authenticated") {
+    if (session?.accessToken) {
       api.setToken(session.accessToken)
       fetchUserOrganizationMembership()
     }
-  }, [status, apiReady])
+  }, [session, apiReady])
 
-  if (status === "loading") {
+  if (authLoading || isRedirecting) {
     return <Loading message="Cargando..." />
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin")
-    return null
   }
 
   return (

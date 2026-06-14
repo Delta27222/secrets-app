@@ -2,8 +2,10 @@
 
 import React from "react"
 
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import { apiClient, type ApiClient } from "@/lib/api"
+import { buildSignInUrl } from "@/lib/auth-session-config"
 import type { Session } from "next-auth"
 
 // Creamos un contexto para el API client
@@ -29,14 +31,26 @@ export const useApi = () => {
 // Hook para verificar si el API client está listo
 export const useApiReady = () => React.useContext(ApiContext).isReady
 
+/**
+ * Limpia todo el almacenamiento del navegador (localStorage, sessionStorage, cookies de app)
+ * Se ejecuta cuando la sesión expira para no dejar datos residuales.
+ */
+function clearBrowserData() {
+  localStorage.clear()
+  sessionStorage.clear()
+}
+
 // Proveedor que configura el API client con el token de sesión
 export function ApiProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
+  const pathname = usePathname()
   const [isReady, setIsReady] = React.useState<boolean>(false)
+  const wasAuthenticated = React.useRef(false)
 
   // Actualizamos el token cuando cambia la sesión
   React.useEffect(() => {
     if (status === "authenticated") {
+      wasAuthenticated.current = true
       if (session?.accessToken) {
         apiClient.setToken(session.accessToken as string, (session as Session & { tokenType?: string }).tokenType)
         setIsReady(true)
@@ -47,6 +61,22 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     } else if (status === "unauthenticated") {
       apiClient.setToken(undefined)
       setIsReady(false)
+
+      // Si antes estaba autenticado y ahora no → sesión expiró
+      // Limpiar datos del navegador y redirigir al login
+      if (wasAuthenticated.current) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[NextAuth:client] Sesión expirada — signOut y limpieza de storage")
+        }
+        wasAuthenticated.current = false
+        clearBrowserData()
+        signOut({
+          callbackUrl: buildSignInUrl({
+            callbackUrl: pathname,
+            sessionExpired: true,
+          }),
+        })
+      }
     }
     // No establecemos isReady en true durante "loading" para evitar llamadas sin token
   }, [session, status])
