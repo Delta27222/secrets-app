@@ -174,6 +174,44 @@ export interface Log {
   execution_time: string
 }
 
+export interface ServiceToken {
+  _id: string
+  tokenId: string
+  name: string
+  description?: string
+  scopes: string[]
+  status: "active" | "revoked" | "expired" | "pending_rotation"
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+  expiresAt: string
+  lastUsedAt?: string
+  requestCount: number
+  projectId: string
+  rotated?: boolean
+  environmentId?: string
+}
+
+export interface ServiceTokenCreateResponse extends ServiceToken {
+  tokenSecret: string
+  warning: string
+}
+
+export interface ServiceTokenUsage {
+  requestCount: number
+  lastUsedAt?: string
+  lastUsedByIp?: string
+  requestsToday: number
+  requestsThisHour: number
+}
+
+export interface ServiceTokenRotateResponse {
+  status: string
+  new_token_id: string
+  new_token_secret: string
+  warning: string
+}
+
 export interface PaginationMeta {
   page: number
   per_page: number
@@ -838,6 +876,99 @@ export class ApiClient {
       const errorText = await response.text()
       console.error("Error en getAllLogs:", response.status, errorText)
       throw new Error(`Error al obtener logs: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  // ===== SERVICE TOKENS =====
+
+  async createServiceToken(projectId: string, payload: {
+    name: string
+    description?: string
+    scopes: string[]
+    expiresInDays?: number
+    environmentId?: string
+  }): Promise<ServiceTokenCreateResponse> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens`,
+      this.token,
+      this.tokenType,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error creating token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async listServiceTokens(projectId: string): Promise<ServiceToken[]> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error listing tokens: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getServiceToken(tokenId: string, projectId: string): Promise<ServiceToken> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens/${tokenId}`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error getting token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async deleteServiceToken(tokenId: string, projectId: string, reason?: string): Promise<void> {
+    let url = `/v1/projects/${projectId}/tokens/${tokenId}`
+    if (reason) url += `&reason=${encodeURIComponent(reason)}`
+
+    const response = await fetchWithAuth(url, this.token, this.tokenType, {
+      method: "DELETE"
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error deleting token: ${response.status} ${errorText}`)
+    }
+  }
+
+  async rotateServiceToken(tokenId: string, projectId: string): Promise<ServiceTokenRotateResponse> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens/${tokenId}/rotate`,
+      this.token,
+      this.tokenType,
+      {
+        method: "POST"
+      }
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error rotating token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getServiceTokenUsage(tokenId: string, projectId: string): Promise<ServiceTokenUsage> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens/${tokenId}/usage`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error getting token usage: ${response.status} ${errorText}`)
     }
     return response.json()
   }
