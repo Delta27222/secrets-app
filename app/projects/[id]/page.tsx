@@ -12,7 +12,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, Layers, Users, Logs} from "lucide-react"
+import { Home, Layers, Users, Logs, Key } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useProjectsInfo, useRequireAuth } from "@/hooks"
 import { useLogs } from "@/hooks/useLogs"
@@ -22,6 +22,7 @@ const ProjectEnvironments = dynamic(() => import("@/components/project-environme
 const ProjectMembers = dynamic(() => import("@/components/project-members").then(mod => ({ default: mod.ProjectMembers })))
 const ProjectSettings = dynamic(() => import("@/components/project-settings").then(mod => ({ default: mod.ProjectSettings })))
 const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
+const ServiceTokensManager = dynamic(() => import("@/components/V2/ServiceTokens/ServiceTokensManager").then(mod => ({ default: mod.ServiceTokensManager })))
 
 export default function ProjectDetailPage() {
   const { session, isLoading: authLoading, isRedirecting } = useRequireAuth()
@@ -139,6 +140,12 @@ export default function ProjectDetailPage() {
               <Users className="mr-2 h-4 w-4" />
               Miembros
             </TabsTrigger>
+            {(userProjectRole === "admin" || userOrgRole === "owner" || userOrgRole === "admin") && (
+              <TabsTrigger value="service-tokens" className="flex items-center">
+                <Key className="mr-2 h-4 w-4" />
+                Tokens de Servicio
+              </TabsTrigger>
+            )}
             {canSeeLogs ? (
               <TabsTrigger value="logs" className="flex items-center">
                 <Logs className="mr-2 h-4 w-4" />
@@ -150,6 +157,12 @@ export default function ProjectDetailPage() {
           <TabsContent value="environments">{project && <ProjectEnvironments projectId={project._id} />}</TabsContent>
 
           <TabsContent value="members">{project && <ProjectMembers projectId={project._id} />}</TabsContent>
+
+          {(userProjectRole === "admin" || userOrgRole === "owner" || userOrgRole === "admin") && (
+            <TabsContent value="service-tokens">
+              {project && <ServiceTokensManager projectId={project._id} />}
+            </TabsContent>
+          )}
 
           <TabsContent value="logs">
             {project && (

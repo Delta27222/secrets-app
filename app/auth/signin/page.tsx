@@ -12,7 +12,19 @@ import { useSearchParams } from "next/navigation"
 export default function SignIn() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") || "/"
-  const sessionExpired = searchParams.get(SESSION_EXPIRED_SEARCH_PARAM) === "1"
+  const sessionExpiredParam = searchParams.get(SESSION_EXPIRED_SEARCH_PARAM) === "1"
+  // También verificar sessionStorage como fallback (sobrevive redirects de signOut)
+  const [sessionExpired, setSessionExpired] = React.useState(sessionExpiredParam)
+
+  React.useEffect(() => {
+    if (sessionExpired) return
+    try {
+      if (sessionStorage.getItem("tek-session-expired") === "1") {
+        sessionStorage.removeItem("tek-session-expired")
+        setSessionExpired(true)
+      }
+    } catch {}
+  }, [])
   const notOrgMember = searchParams.get("error") === "not_org_member"
   const notify = useNotify()
   const [isSigningIn, setIsSigningIn] = React.useState<boolean>(false)
@@ -22,6 +34,8 @@ export default function SignIn() {
   React.useEffect(() => {
     if (!sessionExpired || hasShownExpiredNotice.current) return
     hasShownExpiredNotice.current = true
+    // Limpiar flag de sessionStorage si existe
+    try { sessionStorage.removeItem("tek-session-expired") } catch {}
     notify(
       "Tu sesión ha caducado por inactividad. Inicia sesión de nuevo para continuar.",
       "warning",

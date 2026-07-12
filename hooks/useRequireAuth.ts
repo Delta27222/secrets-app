@@ -23,10 +23,14 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (status !== "unauthenticated") return
+    const expired = wasAuthenticated.current
+    if (expired) {
+      try { sessionStorage.setItem("tek-session-expired", "1") } catch {}
+    }
     router.replace(
       buildSignInUrl({
         callbackUrl: pathname,
-        sessionExpired: wasAuthenticated.current,
+        sessionExpired: expired,
       }),
     )
   }, [status, router, pathname])

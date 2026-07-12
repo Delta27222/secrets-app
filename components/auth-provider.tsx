@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <SessionProvider
       // Sin polling automático: heartbeat por actividad lo reemplaza
       refetchInterval={SESSION_REFETCH_INTERVAL_SECONDS}
-      refetchOnWindowFocus={true}
+      refetchOnWindowFocus={false}
     >
       <SessionDebugLogger />
       <ActivityHeartbeatListener />

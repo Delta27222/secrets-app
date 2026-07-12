@@ -32,12 +32,11 @@ export const useApi = () => {
 export const useApiReady = () => React.useContext(ApiContext).isReady
 
 /**
- * Limpia todo el almacenamiento del navegador (localStorage, sessionStorage, cookies de app)
- * Se ejecuta cuando la sesión expira para no dejar datos residuales.
+ * Limpia almacenamiento del navegador cuando la sesión expira.
+ * Preserva sessionStorage para flags de redirección (tek-session-expired).
  */
 function clearBrowserData() {
   localStorage.clear()
-  sessionStorage.clear()
 }
 
 // Proveedor que configura el API client con el token de sesión
@@ -63,13 +62,15 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       setIsReady(false)
 
       // Si antes estaba autenticado y ahora no → sesión expiró
-      // Limpiar datos del navegador y redirigir al login
+      // Marcar en sessionStorage para que signin page muestre mensaje,
+      // luego limpiar datos y hacer signOut.
       if (wasAuthenticated.current) {
         if (process.env.NODE_ENV === "development") {
           console.warn("[NextAuth:client] Sesión expirada — signOut y limpieza de storage")
         }
         wasAuthenticated.current = false
         clearBrowserData()
+        try { sessionStorage.setItem("tek-session-expired", "1") } catch {}
         signOut({
           callbackUrl: buildSignInUrl({
             callbackUrl: pathname,

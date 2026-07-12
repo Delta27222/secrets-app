@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import {
   MembershipsProvider,
   ToastContextProvider,
+  ServiceTokensProvider,
 } from "@/context";
 import { ProjectsInfoProvider } from "@/context/ProjectsInfoContext";
 import { LogsProvider } from "@/context/LogsContext";
@@ -30,8 +31,10 @@ export default function RootLayout({
             <ProjectsInfoProvider>
               <ToastContextProvider>
                 <LogsProvider>
-                  {children}
-                  <div id="toast" />
+                  <ServiceTokensProvider>
+                    {children}
+                    <div id="toast" />
+                  </ServiceTokensProvider>
                 </LogsProvider>
               </ToastContextProvider>
             </ProjectsInfoProvider>
