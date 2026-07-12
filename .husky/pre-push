@@ -1,0 +1,12 @@
+# Solo cuando se hace push a development: corre lint + build.
+# Si algo falla, el push se aborta.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/development)
+      echo "▶ Pre-push a development — corriendo lint + build…"
+      npm run lint || { echo "❌ Lint falló. Push abortado."; exit 1; }
+      npm run build || { echo "❌ Build falló. Push abortado."; exit 1; }
+      echo "✅ Lint + build OK."
+      ;;
+  esac
+done
