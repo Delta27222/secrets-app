@@ -212,6 +212,16 @@ export interface ServiceTokenRotateResponse {
   warning: string
 }
 
+// Token de sistema (global): igual que ServiceToken pero sin proyecto obligatorio
+export interface SystemToken extends Omit<ServiceToken, "projectId" | "environmentId"> {
+  projectId?: string | null
+}
+
+export interface SystemTokenCreateResponse extends SystemToken {
+  tokenSecret: string
+  warning: string
+}
+
 export interface PaginationMeta {
   page: number
   per_page: number
@@ -971,6 +981,49 @@ export class ApiClient {
       throw new Error(`Error getting token usage: ${response.status} ${errorText}`)
     }
     return response.json()
+  }
+
+  // ==========================================================================
+  // System tokens (globales, a nivel de organización)
+  // ==========================================================================
+
+  async createSystemToken(payload: {
+    name: string
+    description?: string
+    scopes: string[]
+    expires_in_days?: number
+  }): Promise<SystemTokenCreateResponse> {
+    const response = await fetchWithAuth("/v1/system-tokens", this.token, this.tokenType, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error creating system token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async listSystemTokens(): Promise<SystemToken[]> {
+    const response = await fetchWithAuth("/v1/system-tokens", this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error listing system tokens: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async deleteSystemToken(tokenId: string): Promise<void> {
+    const response = await fetchWithAuth(
+      `/v1/system-tokens/${tokenId}`,
+      this.token,
+      this.tokenType,
+      { method: "DELETE" }
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error deleting system token: ${response.status} ${errorText}`)
+    }
   }
 }
 

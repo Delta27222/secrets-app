@@ -12,7 +12,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, FolderKanban, Users, Logs } from "lucide-react"
+import { Home, FolderKanban, Users, Logs, KeyRound } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateProjectForm } from "@/components/create-project-form"
 import { ProjectsGrid } from "@/components/projects-grid"
@@ -23,6 +23,7 @@ import { defaultLogsColumns } from "@/components/V2/Columns/DefaultColumns"
 const OrganizationMembers = dynamic(() => import("@/components/organization-members").then(mod => ({ default: mod.OrganizationMembers })))
 const OrganizationSettings = dynamic(() => import("@/components/organization-settings").then(mod => ({ default: mod.OrganizationSettings })))
 const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
+const SystemTokensManager = dynamic(() => import("@/components/V2/SystemTokens/SystemTokensManager").then(mod => ({ default: mod.SystemTokensManager })))
 
 export default function OrganizationPage() {
   const api = useApi()
@@ -146,6 +147,12 @@ export default function OrganizationPage() {
               <Logs className="mr-2 h-4 w-4" />
               Logs
             </TabsTrigger>
+            {canSeeLogs && (
+              <TabsTrigger value="tokens" className="flex items-center">
+                <KeyRound className="mr-2 h-4 w-4" />
+                Tokens
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="projects" className="space-y-6">
@@ -180,6 +187,11 @@ export default function OrganizationPage() {
                   onPerPageChange: changePerPage,
                 } : undefined}
               />
+            </TabsContent>
+          )}
+          {canSeeLogs && (
+            <TabsContent value="tokens">
+              <SystemTokensManager />
             </TabsContent>
           )}
         </Tabs>
