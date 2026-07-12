@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, Copy, Check, Trash2, KeyRound } from "lucide-react"
 import type { SystemToken } from "@/lib/api"
 import { SYSTEM_TOKEN_SCOPES } from "./system-token-scopes"
@@ -81,7 +82,24 @@ export function SystemTokensManager() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Cargando...</p>
+        <div className="border rounded-lg divide-y" aria-busy="true" aria-label="Cargando tokens">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between p-4">
+              <div className="space-y-2.5 w-full max-w-md">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-36" />
+                  <Skeleton className="h-4 w-14 rounded-full" />
+                </div>
+                <div className="flex gap-1.5">
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-4 w-16 rounded" />
+                </div>
+                <Skeleton className="h-3 w-28" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-md" />
+            </div>
+          ))}
+        </div>
       ) : tokens.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground border rounded-lg">
           <KeyRound className="w-8 h-8 mx-auto mb-2 opacity-40" />
