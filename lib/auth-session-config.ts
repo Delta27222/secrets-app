@@ -14,7 +14,7 @@ const SESSION_CONFIG = {
     heartbeatIntervalMs: 2 * 60 * 1000, // Renovar cada 2 minutos
   },
   development: {
-    maxAgeSeconds: 1 * 60,       // 5 minuto sin actividad (testing rápido)
+    maxAgeSeconds: 5 * 60,       // 5 minutos sin actividad (testing rápido)
     heartbeatIntervalMs: 2 * 60 * 1000,     // Renovar cada 2 minutos
   },
 }
