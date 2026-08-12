@@ -14,6 +14,11 @@ export function Header({ user }: { user: any }) {
           <Link href="/docs" className="text-sm font-medium hover:text-primary transition-colors">
             Documentación CLI
           </Link>
+          {user && (
+            <Link href="/sdk-demo" className="text-sm font-medium hover:text-primary transition-colors">
+              SDK Demo
+            </Link>
+          )}
           {user ? (
             <>
               <UserNav user={user} />

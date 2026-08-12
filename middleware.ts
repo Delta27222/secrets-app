@@ -13,7 +13,7 @@ export async function middleware(req: NextRequest) {
   const session = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
 
   // Rutas protegidas que requieren autenticación
-  const protectedPaths = ["/organizations", "/projects"]
+  const protectedPaths = ["/organizations", "/projects", "/sdk-demo"]
 
   const isProtectedPath = protectedPaths.some(
     (path) => req.nextUrl.pathname === path || req.nextUrl.pathname.startsWith(`${path}/`),
@@ -57,6 +57,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/organizations/:path*", "/projects/:path*"],
+  matcher: ["/organizations/:path*", "/projects/:path*", "/sdk-demo/:path*", "/sdk-demo"],
 }
 
