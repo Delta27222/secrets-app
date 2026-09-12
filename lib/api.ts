@@ -172,6 +172,17 @@ export interface Log {
   idTarget: string
   details: string
   execution_time: string
+  // Resultado de la operación. Ausentes en los éxitos y en las filas anteriores
+  // al cambio de esquema, así que todo el consumo tiene que ser defensivo.
+  level?: "INFO" | "ERROR"
+  status_code?: number
+  error_type?: string
+  error_message?: string
+  client_ip?: string
+  user_agent?: string
+  method?: string
+  // Correlaciona las filas producidas por una misma petición.
+  request_id?: string
 }
 
 export interface ServiceToken {
@@ -864,11 +875,20 @@ export class ApiClient {
   async getEnvironmentsLogs(
     targetIds: string[],
     page: number = 1,
-    perPage: number = 20
+    perPage: number = 20,
+    level?: "INFO" | "ERROR"
   ): Promise<PaginatedResponse<Log>> {
+    // Sin ambientes no hay nada que consultar. Si se llamara igual, la URL saldría
+    // sin `target_ids` y el backend devolvería los logs de TODA la instalación:
+    // los de otros proyectos y los errores HTTP sin target se colarían en la vista.
+    if (targetIds.length === 0) {
+      return { data: [], meta: { page, per_page: perPage, total: 0, total_pages: 0 } }
+    }
+
     const targetParams = targetIds.map(id => `target_ids=${id}`).join('&')
     const paginationParams = `page=${page}&per_page=${perPage}`
-    const queryParams = `${targetParams}&${paginationParams}`
+    const levelParam = level ? `&level=${level}` : ""
+    const queryParams = `${targetParams}&${paginationParams}${levelParam}`
 
     const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
     if (!response.ok) {
@@ -879,8 +899,9 @@ export class ApiClient {
     return response.json()
   }
 
-  async getAllLogs(page: number = 1, perPage: number = 20): Promise<PaginatedResponse<Log>> {
-    const queryParams = `page=${page}&per_page=${perPage}`
+  async getAllLogs(page: number = 1, perPage: number = 20, level?: "INFO" | "ERROR"): Promise<PaginatedResponse<Log>> {
+    const levelParam = level ? `&level=${level}` : ""
+    const queryParams = `page=${page}&per_page=${perPage}${levelParam}`
     const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
     if (!response.ok) {
       const errorText = await response.text()
