@@ -2,7 +2,6 @@
 
 import React from "react";
 import { useApi } from "@/components/api-provider";
-import { useProjectEnvironments } from "@/hooks";
 import { Log, PaginationMeta } from "@/lib/api";
 import { MinimalUser } from "@/lib/api";
 
@@ -14,6 +13,8 @@ export interface EnrichedLog extends Omit<Log, 'user'> {
     displayName: string;
   };
 }
+
+export type LogLevel = "INFO" | "ERROR";
 
 export type TLogsContext = {
   loading: boolean;
@@ -28,8 +29,8 @@ export type TLogsContext = {
   setPerPage: React.Dispatch<React.SetStateAction<number>>;
 
   // Functions
-  fetchEnvironmentsLogs: (page?: number, perPage?: number) => Promise<void>;
-  fetchOrganizationLogs: (page?: number, perPage?: number) => Promise<void>;
+  fetchEnvironmentsLogs: (environmentIds: string[], page?: number, perPage?: number, level?: LogLevel) => Promise<void>;
+  fetchOrganizationLogs: (page?: number, perPage?: number, level?: LogLevel) => Promise<void>;
   goToPage: (page: number) => Promise<void>;
   changePerPage: (newPerPage: number) => Promise<void>;
 };
@@ -59,10 +60,6 @@ type Props = {
 export function LogsProvider({ children }: Props) {
   const api = useApi();
 
-  const {
-    environments,
-  } = useProjectEnvironments();
-
   const [loading, setLoading] = React.useState<boolean>(false);
   const [logs, setLogs] = React.useState<EnrichedLog[]>([]);
   const [pagination, setPagination] = React.useState<PaginationMeta | null>(null);
@@ -70,16 +67,34 @@ export function LogsProvider({ children }: Props) {
   const [perPage, setPerPage] = React.useState<number>(5);
   const [users, setUsers] = React.useState<MinimalUser[]>([]);
   const lastFetchTypeRef = React.useRef<'org' | 'env'>('org');
+  const lastLevelRef = React.useRef<LogLevel | undefined>(undefined);
+  // Se recuerdan para que paginar no pierda el filtro por ambientes.
+  const lastEnvironmentIdsRef = React.useRef<string[]>([]);
+  // Nivel propio de la vista de ambientes. Separado del de organización porque
+  // el provider es global: al navegar entre páginas el ref sobrevive y un tab de
+  // errores dejaría el valor puesto para la siguiente vista.
+  const lastEnvLevelRef = React.useRef<LogLevel | undefined>(undefined);
 
-  const fetchEnvironmentsLogs = React.useCallback(async (page: number = currentPage, perPageParam: number = perPage) => {
+  // Los ids de ambiente llegan por parámetro a propósito. Antes se leían con
+  // useProjectEnvironments() aquí dentro, pero LogsProvider vive en el layout raíz,
+  // POR ENCIMA de ProjectEnvironmentsProvider: el hook devolvía siempre el valor por
+  // defecto ([]), la URL salía sin target_ids y el backend respondía con todos los
+  // logs de la instalación. La página sí está dentro del provider y los tiene.
+  const fetchEnvironmentsLogs = React.useCallback(async (environmentIds: string[], page: number = currentPage, perPageParam: number = perPage, level?: LogLevel) => {
     try {
       setLoading(true);
       lastFetchTypeRef.current = 'env';
-      const response = await api.getEnvironmentsLogs(
-        environments.map(environment => environment._id),
-        page,
-        perPageParam
-      );
+      lastEnvironmentIdsRef.current = environmentIds;
+      const effectiveLevel = level ?? lastEnvLevelRef.current;
+      lastEnvLevelRef.current = effectiveLevel;
+
+      if (environmentIds.length === 0) {
+        setLogs([]);
+        setPagination(null);
+        return;
+      }
+
+      const response = await api.getEnvironmentsLogs(environmentIds, page, perPageParam, effectiveLevel);
 
       // Change the user id to the user object
       const enrichedLogs = await enrichLogsWithUsers(response.data);
@@ -91,13 +106,17 @@ export function LogsProvider({ children }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [api, currentPage, perPage, environments]);
+  }, [api, currentPage, perPage]);
 
-  const fetchOrganizationLogs = React.useCallback(async (page: number = currentPage, perPageParam: number = perPage) => {
+  const fetchOrganizationLogs = React.useCallback(async (page: number = currentPage, perPageParam: number = perPage, level?: LogLevel) => {
     try {
       setLoading(true);
       lastFetchTypeRef.current = 'org';
-      const response = await api.getAllLogs(page, perPageParam);
+      // Se recuerda el nivel para que paginar o cambiar el tamaño de página no
+      // salte del tab de errores al de info.
+      const effectiveLevel = level ?? lastLevelRef.current;
+      lastLevelRef.current = effectiveLevel;
+      const response = await api.getAllLogs(page, perPageParam, effectiveLevel);
 
       // Change the user id to the user object
       const enrichedLogs = await enrichLogsWithUsers(response.data);
@@ -114,7 +133,7 @@ export function LogsProvider({ children }: Props) {
   const goToPage = React.useCallback(async (page: number) => {
     if (pagination && page >= 1 && page <= pagination.total_pages) {
       if (lastFetchTypeRef.current === 'env') {
-        await fetchEnvironmentsLogs(page, perPage);
+        await fetchEnvironmentsLogs(lastEnvironmentIdsRef.current, page, perPage);
       } else {
         await fetchOrganizationLogs(page, perPage);
       }
@@ -125,7 +144,7 @@ export function LogsProvider({ children }: Props) {
     setPerPage(newPerPage);
     setCurrentPage(1); // Reset to first page when changing per page
     if (lastFetchTypeRef.current === 'env') {
-      await fetchEnvironmentsLogs(1, newPerPage);
+      await fetchEnvironmentsLogs(lastEnvironmentIdsRef.current, 1, newPerPage);
     } else {
       await fetchOrganizationLogs(1, newPerPage);
     }
