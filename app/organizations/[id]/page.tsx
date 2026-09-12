@@ -12,13 +12,15 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Home, FolderKanban, Users, Logs, KeyRound } from "lucide-react";
+import { Home, FolderKanban, Users, Logs, KeyRound, Info, TriangleAlert } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateProjectForm } from "@/components/create-project-form";
 import { ProjectsGrid } from "@/components/projects-grid";
 import { useMemberships, useRequireAuth } from "@/hooks";
 import { useLogs } from "@/hooks/useLogs";
+import type { LogLevel } from "@/context/LogsContext";
 import { defaultLogsColumns } from "@/components/V2/Columns/DefaultColumns";
+import { errorLogsColumns } from "@/components/V2/Columns/ErrorColumns";
 
 const OrganizationMembers = dynamic(() =>
   import("@/components/organization-members").then((mod) => ({
@@ -42,6 +44,7 @@ export default function OrganizationPage() {
   const params = useParams();
   const { session, isLoading: authLoading, isRedirecting } = useRequireAuth();
   const [activeTab, setActiveTab] = React.useState("projects");
+  const [logLevel, setLogLevel] = React.useState<LogLevel>("INFO");
 
   const {
     loadingOgr,
@@ -76,11 +79,13 @@ export default function OrganizationPage() {
     }
   }, [session, params.id]);
 
+  // Al cambiar de nivel se vuelve a la página 1: los totales son distintos y
+  // conservar la página actual dejaría la tabla fuera de rango.
   React.useEffect(() => {
     if (activeTab === "logs") {
-      fetchOrganizationLogs(pagination?.page, pagination?.per_page);
+      fetchOrganizationLogs(1, pagination?.per_page, logLevel);
     }
-  }, [activeTab]);
+  }, [activeTab, logLevel]);
 
   const handleOrganizationUpdated = () => {
     if (params.id) {
@@ -197,11 +202,29 @@ export default function OrganizationPage() {
           </TabsContent>
           {canSeeLogs && (
             <TabsContent value="logs">
+              {/* Info y Error viven en la misma tabla Logs; el nivel se filtra en
+                  el backend, no en cliente, para que la paginación siga cuadrando. */}
+              <Tabs
+                value={logLevel}
+                onValueChange={(value) => setLogLevel(value as LogLevel)}
+                className="mb-4"
+              >
+                <TabsList>
+                  <TabsTrigger value="INFO">
+                    <Info className="h-4 w-4 mr-2" />
+                    Info
+                  </TabsTrigger>
+                  <TabsTrigger value="ERROR">
+                    <TriangleAlert className="h-4 w-4 mr-2" />
+                    Errores
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
               <LogsTable
-                title="Logs de la organización"
+                title={logLevel === "ERROR" ? "Errores de la organización" : "Logs de la organización"}
                 logs={logs}
                 loading={logsLoading}
-                columns={defaultLogsColumns}
+                columns={logLevel === "ERROR" ? errorLogsColumns : defaultLogsColumns}
                 pagination={
                   pagination
                     ? {

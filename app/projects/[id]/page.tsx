@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Home, Layers, Users, Logs, Key } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useProjectsInfo, useRequireAuth } from "@/hooks"
+import { useProjectsInfo, useProjectEnvironments, useRequireAuth } from "@/hooks"
 import { useLogs } from "@/hooks/useLogs"
 import { customEnvironmentsColumns } from "@/components/V2/Columns/EnvironmentsColumns"
 
@@ -55,11 +55,31 @@ export default function ProjectDetailPage() {
     }
   }, [session, params.id])
 
+  // Los ambientes definen el filtro de los logs y se leen AQUÍ, no dentro de
+  // LogsContext: este componente sí está bajo ProjectEnvironmentsProvider.
+  // Si el tab se abre antes de que carguen, el efecto se repite al llegar.
+  const { environments, fetchEnvironments } = useProjectEnvironments()
+
+  // El tab de Ambientes es quien los pedía. Si se entra directo a Logs, ese
+  // componente nunca se monta y no habría ids con los que filtrar.
+  React.useEffect(() => {
+    if (session?.accessToken && params.id && environments.length === 0) {
+      fetchEnvironments({ silent: true })
+    }
+  }, [session, params.id])
+
   React.useEffect(() => {
     if (activeTab === "logs") {
-      fetchEnvironmentsLogs(pagination?.page, pagination?.per_page)
+      // Esta vista es estrictamente informativa: los fallos se consultan en el
+      // tab de Errores de la organización, no aquí.
+      fetchEnvironmentsLogs(
+        environments.map((environment) => environment._id),
+        pagination?.page,
+        pagination?.per_page,
+        "INFO"
+      )
     }
-  }, [activeTab])
+  }, [activeTab, environments])
 
   const handleProjectUpdated = () => {
     if (params.id) {
