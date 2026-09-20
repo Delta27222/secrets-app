@@ -22,14 +22,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# uid/gid 1000:1000 — debe coincidir con el "user" de la task definition
-# ECS (readonlyRootFilesystem + non-root, ver 04-ecs.tf).
-RUN addgroup --system --gid 1000 nodejs && adduser --system --uid 1000 nextjs
-
+# node:20-alpine ya trae un usuario "node" en uid/gid 1000 — coincide con
+# el "user" de la task definition ECS (readonlyRootFilesystem + non-root,
+# ver 04-ecs.tf), no hace falta crear uno nuevo (y crear otro con el mismo
+# gid 1000 falla: "gid '1000' in use").
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 
-USER nextjs
+USER node
 EXPOSE 3000
 CMD ["node", "server.js"]
