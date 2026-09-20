@@ -1,0 +1,73 @@
+name: Deploy front a ECS
+
+# Solo main — un ambiente (ver decisiones de arquitectura: sin staging
+# replicado en infra). Build + push a ECR + nueva revision de task
+# definition + update-service, todo en un job.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: tek-secrets-v2-front
+  ECS_CLUSTER: tek-secrets-v2-cluster
+  ECS_SERVICE: tek-secrets-v2-front-service
+  ECS_TASK_DEFINITION_FAMILY: tek-secrets-v2-front
+  CONTAINER_NAME: front
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS (OIDC, sin llaves de larga vida)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login en ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build y push de la imagen (tag = git sha)
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build --platform linux/amd64 \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Descargar la task definition actual
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION_FAMILY" \
+            --query taskDefinition > task-definition.json
+
+      - name: Insertar la imagen nueva en la task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build.outputs.image }}
+
+      # Registra la revision nueva y actualiza el servicio. Rollback =
+      # apuntar el servicio a la revision anterior desde la consola/CLI de
+      # ECS, sin rebuild (ver decisiones de arquitectura).
+      - name: Desplegar en ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
