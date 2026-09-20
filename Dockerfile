@@ -3,8 +3,11 @@
 # ---- deps: solo node_modules, capa cacheable mientras no cambie el lockfile ----
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+# @secrets-27222633/sdk es privado (GitHub Packages, ver .npmrc). El token
+# entra por secret mount de BuildKit — nunca queda en una capa de la
+# imagen ni en `docker history` (a diferencia de un ARG/ENV plano).
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN npm ci
 
 # ---- builder: build de Next.js (output: "standalone" en next.config.mjs) ----
 FROM node:20-alpine AS builder
