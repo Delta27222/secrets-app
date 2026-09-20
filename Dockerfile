@@ -15,6 +15,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* se hornea en el bundle del navegador durante "next build"
+# — pasarlo como env var de ECS en runtime no sirve de nada, el código
+# cliente ya quedó compilado con lo que haya (o no haya) acá en build-time.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 # ---- runner: solo lo que hace falta para correr, usuario no-root ----
