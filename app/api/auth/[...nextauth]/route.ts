@@ -51,7 +51,10 @@ function tokenExpiryDetails(token: Record<string, unknown>) {
 
 // Obtener la URL base para la autenticación
 const baseUrl = process.env.NEXTAUTH_URL
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://tek-secrets.onrender.com"
+// Este fetch corre server-side (callback de NextAuth) — si hay una ruta
+// interna a la API dentro de la VPC (Service Connect), se usa esa en vez
+// de la URL pública. El navegador nunca ejecuta este código.
+const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://tek-secrets.onrender.com"
 
 if (!baseUrl && process.env.NODE_ENV === "production") {
   console.warn("ADVERTENCIA: No se ha configurado NEXTAUTH_URL o VERCEL_URL en el entorno de producción.")
