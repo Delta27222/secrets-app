@@ -18,6 +18,9 @@ env:
   ECS_SERVICE: tek-secrets-v2-front-service
   ECS_TASK_DEFINITION_FAMILY: tek-secrets-v2-front
   CONTAINER_NAME: front
+  # NEXT_PUBLIC_* se hornea en build-time (ver Dockerfile) — tiene que
+  # coincidir con el dominio publico real, no con el runtime de ECS.
+  NEXT_PUBLIC_API_URL: https://api.secretsapi.online
 
 jobs:
   deploy:
@@ -56,6 +59,7 @@ jobs:
         run: |
           docker buildx build --platform linux/amd64 \
             --secret id=github_token,env=GITHUB_TOKEN \
+            --build-arg NEXT_PUBLIC_API_URL="${{ env.NEXT_PUBLIC_API_URL }}" \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
             --push .
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
