@@ -238,7 +238,7 @@ source ~/.zshrc
                         Replace 3.x with your Python version (e.g., 3.9, 3.10, 3.11)
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Uncomment the lines for your shell. If unsure which shell you're using, run{" "}
+                        Uncomment the lines for your shell. If unsure which shell you&apos;re using, run{" "}
                         <code className="bg-muted px-1 rounded">echo $SHELL</code>
                       </p>
                     </div>
@@ -249,7 +249,8 @@ source ~/.zshrc
                         Add to PATH
                       </h5>
                       <CodeBlock commandId="linux-path">
-                        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc source ~/.bashrc
+                        {`echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc`}
                       </CodeBlock>
                       <p className="text-xs text-muted-foreground mt-1">
                         For zsh users, use ~/.zshrc instead of <code className="bg-muted px-1 rounded">~/.bashrc</code>
@@ -266,7 +267,7 @@ source ~/.zshrc
                           Option 1: Using Command Prompt (as Administrator)
                         </p>
                         <CodeBlock commandId="windows-path-cmd">
-                          setx PATH "%PATH%;%APPDATA%\Python\Python3x\Scripts"
+                          {`setx PATH "%PATH%;%APPDATA%\\Python\\Python3x\\Scripts"`}
                         </CodeBlock>
                         <p className="text-xs text-muted-foreground">
                           Replace Python3x with your version (e.g., Python39, Python310)
@@ -448,7 +449,7 @@ source ~/.zshrc
                 <div>
                   <h4 className="font-semibold mb-3">2. Verify your user</h4>
                   <CodeBlock commandId="workflow-2">tek-secrets user</CodeBlock>
-                  <p className="text-sm text-muted-foreground mt-2">Confirm that you're properly authenticated</p>
+                  <p className="text-sm text-muted-foreground mt-2">Confirm that you&apos;re properly authenticated</p>
                 </div>
 
                 <div>
@@ -475,7 +476,7 @@ tek-secrets env update --env-file .env.staging -p my-project -e staging`}</CodeB
                 <div>
                   <h4 className="font-semibold mb-3">5. Log out (optional)</h4>
                   <CodeBlock commandId="workflow-5">tek-secrets logout</CodeBlock>
-                  <p className="text-sm text-muted-foreground mt-2">End your authenticated session when you're done</p>
+                  <p className="text-sm text-muted-foreground mt-2">End your authenticated session when you&apos;re done</p>
                 </div>
               </CardContent>
             </Card>

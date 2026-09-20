@@ -54,6 +54,24 @@ export function ProjectSettings({ project, userProjectRole, userOrgRole, onProje
     } as Record<string, string>,
   })
 
+  const prevEditDialogOpen = React.useRef(false)
+  React.useEffect(() => {
+    const justOpened = editDialogOpen && !prevEditDialogOpen.current
+    prevEditDialogOpen.current = editDialogOpen
+    if (justOpened) {
+      setFormData({
+        name: project.name,
+        tags: {
+          folder: project.tags?.folder || "",
+          team: project.tags?.team || "",
+          ...Object.fromEntries(
+            Object.entries(project.tags || {}).filter(([key]) => key !== "folder" && key !== "team"),
+          ),
+        } as Record<string, string>,
+      })
+    }
+  }, [editDialogOpen, project])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))

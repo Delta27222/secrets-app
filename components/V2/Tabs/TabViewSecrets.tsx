@@ -1,11 +1,19 @@
 "use client";
 import React from "react";
-import { Eye, EyeOff, Copy, Check, Save, FolderSync } from "lucide-react";
+import { Eye, EyeOff, Copy, Check, Save, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabsContent } from "@/components/ui/tabs";
-import { useProjectEnvironments, useRenderActions } from "@/hooks";
+import {
+  useProjectEnvironments,
+  useProjectsInfo,
+  useRenderActions,
+  useVercelActions,
+} from "@/hooks";
 
 export function TabViewSecrets() {
+  const { userOrgRole, userProjectRole } = useProjectsInfo();
+  const { handleSyncToRender, loading: synToRenderLoading } =
+    useRenderActions();
   const {
     selectedEnvironment,
     copiedSecrets,
@@ -13,14 +21,17 @@ export function TabViewSecrets() {
     setShowSecrets,
     handleCopyAllSecrets,
     handleCopySecret,
+    setDialogToOpen,
+    setActiveTab,
   } = useProjectEnvironments();
-  const { handleSyncToRender, loading: synToRenderLoading } = useRenderActions();
 
-  const { render_server_id, render_token, vercel_server_id, vercel_token } =
+  const { fetchVercelData, loading: synToVercelLoading } = useVercelActions();
+  const { render_server_id, render_token, vercel_project_id, vercel_token } =
     selectedEnvironment || {};
 
+  const canSync = userProjectRole === "admin" && userOrgRole === "owner";
   const isRenderEnvironment = render_server_id && render_token;
-  const isVercelEnvironment = vercel_server_id && vercel_token;
+  const isVercelEnvironment = vercel_project_id && vercel_token;
 
   return (
     <TabsContent value="view" className="space-y-4">
@@ -56,10 +67,19 @@ export function TabViewSecrets() {
 
       {!selectedEnvironment ||
       Object.keys(selectedEnvironment.secrets || {}).length === 0 ? (
-        <div className="text-center py-6 bg-muted rounded-md">
-          <p className="text-muted-foreground">
+        <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-6 text-center">
+          <p className="text-sm text-muted-foreground">
             No hay variables configuradas en este ambiente.
           </p>
+          <Button
+            type="button"
+            variant="link"
+            className="mt-2 h-auto gap-1.5 p-0 text-sm font-medium"
+            onClick={() => setActiveTab("edit")}
+          >
+            <Plus className="h-4 w-4 shrink-0" aria-hidden />
+            Agregar variables
+          </Button>
         </div>
       ) : (
         <div className="border rounded-md overflow-hidden">
@@ -110,51 +130,70 @@ export function TabViewSecrets() {
           </div>
         </div>
       )}
-      <div className="flex flex-row justify-end items-center">
-        {isRenderEnvironment ? (
-          <Button
-            type="button"
-            className="flex items-center gap-2"
-            disabled={synToRenderLoading}
-            onClick={(e) => {
-              e.preventDefault();
-              if (
-                selectedEnvironment?.project_id &&
-                selectedEnvironment?.slug
-              ) {
-                handleSyncToRender(e);
-              }
-            }}
-          >
-            {synToRenderLoading ? (
-              <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Sincronizar con Render
-              </>
-            )}
-          </Button>
-        ) : null}
-        {isVercelEnvironment ? (
-          <Button type="button" className="flex items-center gap-2" disabled={false}>
-            {false ? (
-              <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                Sincronizar con Vercel
-              </>
-            )}
-          </Button>
-        ) : null}
-      </div>
+      {canSync ? (
+        <div className="flex flex-row justify-end items-center gap-5">
+          {/* Solo renderizar el botón de sincronización con Render si las credenciales están presentes */}
+          {isRenderEnvironment && canSync ? (
+            <Button
+              type="button"
+              className="flex items-center gap-2"
+              disabled={synToRenderLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                if (
+                  selectedEnvironment?.project_id &&
+                  selectedEnvironment?.slug
+                ) {
+                  handleSyncToRender(e);
+                }
+              }}
+            >
+              {synToRenderLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Sincronizar con Render
+                </>
+              )}
+            </Button>
+          ) : null}
+
+          {/* Solo renderizar el botón de sincronización con Vercel si las credenciales están presentes */}
+          {isVercelEnvironment && canSync ? (
+            <Button
+              onClick={async (e) => {
+                e.preventDefault();
+                if (
+                  selectedEnvironment?.project_id &&
+                  selectedEnvironment?.slug
+                ) {
+                  await fetchVercelData();
+                  setDialogToOpen("vercel_select_target");
+                }
+              }}
+              type="button"
+              className="flex items-center gap-2"
+              disabled={false}
+            >
+              {synToVercelLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Cargando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Sincronizar con Vercel
+                </>
+              )}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </TabsContent>
   );
 }

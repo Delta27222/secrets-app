@@ -1,72 +1,40 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import React from "react"
+import dynamic from "next/dynamic"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useApi, useApiReady } from "@/components/api-provider"
-import type { OrganizationMembership } from "@/lib/api"
-import { Building2, Lock, Plus, Users } from "lucide-react"
-import Link from "next/link"
+import { Building2, Plus } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PendingInvitations } from "@/components/pending-invitations"
-import { CreateOrganizationForm } from "@/components/create-organization-form"
+import { useMemberships, useRequireAuth } from "@/hooks"
+import { Loading } from "@/components/V2/Common/Loading"
+import { OrganizationsGrid } from "@/components/V2/Organization/OrganizationsGrid"
+
+const PendingInvitations = dynamic(() => import("@/components/pending-invitations").then(mod => ({ default: mod.PendingInvitations })))
+const CreateOrganizationForm = dynamic(() => import("@/components/create-organization-form").then(mod => ({ default: mod.CreateOrganizationForm })))
 
 export default function Home() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const api = useApi()
-  const apiReady = useApiReady()
-  const [memberships, setMemberships] = useState<OrganizationMembership[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("organizations")
+  const {
+    loadingMemberships,
+    memberships,
+    error,
+    fetchUserOrganizationMembership,
+  } = useMemberships();
+  const api = useApi();
+  const apiReady = useApiReady();
+  const { session, isLoading: authLoading, isRedirecting } = useRequireAuth();
+  const [activeTab, setActiveTab] = React.useState("organizations");
 
-  useEffect(() => {
-    // Solo hacemos la petición si la API está lista (tiene token configurado)
-    if (status === "authenticated") {
+  React.useEffect(() => {
+    if (session?.accessToken) {
       api.setToken(session.accessToken)
-      console.log("API lista, obteniendo membresías de organizaciones")
-      fetchOrganizationMemberships()
+      fetchUserOrganizationMembership()
     }
-  }, [status, apiReady])
+  }, [session, apiReady])
 
-  async function fetchOrganizationMemberships() {
-    try {
-      setLoading(true)
-      console.log("Iniciando petición para obtener membresías")
-      const data = await api.getMyOrganizationMemberships()
-      console.log("Membresías obtenidas:", data)
-      setMemberships(data)
-    } catch (err) {
-      console.error("Error fetching organization memberships:", err)
-      setError("No se pudieron cargar las organizaciones. Por favor, intenta de nuevo más tarde.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleInvitationAccepted = () => {
-    fetchOrganizationMemberships()
-  }
-
-  if (status === "loading") {
-
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Cargando</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin")
-    return null
+  if (authLoading || isRedirecting) {
+    return <Loading message="Cargando..." />
   }
 
   return (
@@ -81,17 +49,14 @@ export default function Home() {
             </TabsList>
 
             {activeTab === "organizations" && (
-              <CreateOrganizationForm onOrganizationCreated={fetchOrganizationMemberships} />
+              <CreateOrganizationForm onOrganizationCreated={fetchUserOrganizationMembership} />
             )}
 
           </div>
 
           <TabsContent value="organizations">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p>Cargando organizaciones...</p>
-              </div>
+            {loadingMemberships ? (
+              <Loading message="Cargando organizaciones..." />
             ) : error ? (
               <div className="text-center py-12 text-red-500">{error}</div>
             ) : memberships.length === 0 ? (
@@ -106,36 +71,12 @@ export default function Home() {
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {memberships.map((membership) => (
-                  <Card key={membership._id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <CardTitle>{membership.organization.name}</CardTitle>
-                      {/* <CardDescription>{membership.organization.description || "Sin descripción"}</CardDescription> */}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center text-sm text-muted-foreground mb-2">
-                        <Users className="mr-2 h-4 w-4" />
-                        <span>Rol: {membership.role === "owner" ? "Dueño" : membership.role === "admin" ? "Administrador" : "Miembro"}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Lock className="mr-2 h-4 w-4" />
-                        <span>Gestiona secretos de forma segura</span>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button asChild className="w-full">
-                        <Link href={`/organizations/${membership.organization._id}`}>Ver Organización</Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
+              <OrganizationsGrid memberships={memberships} />
             )}
           </TabsContent>
 
           <TabsContent value="invitations">
-            <PendingInvitations onInvitationAccepted={handleInvitationAccepted} />
+            <PendingInvitations onInvitationAccepted={fetchUserOrganizationMembership} />
           </TabsContent>
         </Tabs>
       </main>

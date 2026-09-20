@@ -1,88 +1,99 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
-import { useParams, useRouter } from "next/navigation"
-import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { useApi, useApiReady } from "@/components/api-provider"
-import type { Organization, Project } from "@/lib/api"
+import React from "react";
+import dynamic from "next/dynamic";
+import { useParams } from "next/navigation";
+import { Header } from "@/components/header";
+import { useApi } from "@/components/api-provider";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Home, FolderKanban, Lock, Users } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { OrganizationMembers } from "@/components/organization-members"
-import { OrganizationSettings } from "@/components/organization-settings"
-// Importar el componente CreateProjectForm
-import { CreateProjectForm } from "@/components/create-project-form"
-import { Badge } from "@/components/ui/badge"
-import { ProjectsGrid } from "@/components/projects-grid"
+} from "@/components/ui/breadcrumb";
+import { Home, FolderKanban, Users, Logs, KeyRound, Info, TriangleAlert } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CreateProjectForm } from "@/components/create-project-form";
+import { ProjectsGrid } from "@/components/projects-grid";
+import { useMemberships, useRequireAuth } from "@/hooks";
+import { useLogs } from "@/hooks/useLogs";
+import type { LogLevel } from "@/context/LogsContext";
+import { defaultLogsColumns } from "@/components/V2/Columns/DefaultColumns";
+import { errorLogsColumns } from "@/components/V2/Columns/ErrorColumns";
 
+const OrganizationMembers = dynamic(() =>
+  import("@/components/organization-members").then((mod) => ({
+    default: mod.OrganizationMembers,
+  })),
+);
+const OrganizationSettings = dynamic(() =>
+  import("@/components/organization-settings").then((mod) => ({
+    default: mod.OrganizationSettings,
+  })),
+);
+const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"));
+const SystemTokensManager = dynamic(() =>
+  import("@/components/V2/SystemTokens/SystemTokensManager").then((mod) => ({
+    default: mod.SystemTokensManager,
+  })),
+);
 
 export default function OrganizationPage() {
-  const { data: session, status } = useSession()
-  const params = useParams()
-  const router = useRouter()
-  const api = useApi()
-  api.setToken(session?.accessToken)
-  const [organization, setOrganization] = useState<Organization | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("projects")
-  // Añadir un nuevo estado para almacenar el rol del usuario en la organización
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const api = useApi();
+  const params = useParams();
+  const { session, isLoading: authLoading, isRedirecting } = useRequireAuth();
+  const [activeTab, setActiveTab] = React.useState("projects");
+  const [logLevel, setLogLevel] = React.useState<LogLevel>("INFO");
 
-  useEffect(() => {
-    if (status === "authenticated" && params.id) {
-      api.setToken(session.accessToken)
-      fetchData(params.id as string)
+  const {
+    loadingOgr,
+    loadingProjects,
+    loadingMemberships,
+    error,
+    organization,
+    userRole,
+    projects,
+    fetchAllData,
+    setOrganizationId,
+    fetchJustNeededData,
+    fetchOrganization,
+  } = useMemberships();
+  const {
+    logs,
+    loading: logsLoading,
+    fetchOrganizationLogs,
+    pagination,
+    goToPage,
+    changePerPage,
+  } = useLogs();
+
+  const canSeeLogs = userRole === "owner" || userRole === "admin";
+  const loading = loadingOgr || loadingProjects || loadingMemberships;
+
+  React.useEffect(() => {
+    if (session?.accessToken && params.id) {
+      api.setToken(session.accessToken);
+      setOrganizationId(params.id as string);
+      fetchJustNeededData(params.id as string);
     }
-  }, [status, params.id])
+  }, [session, params.id]);
 
-
-  async function fetchData(organizationId: string) {
-    try {
-      setLoading(true)
-      const [orgData, projectsData, membershipsData] = await Promise.all([
-        api.getOrganization(organizationId),
-        api.getMyProjectsByOrganization(organizationId),
-        api.getOrganizationMemberships(organizationId),
-      ])
-      setOrganization(orgData)
-      setProjects(projectsData)
-
-      // Buscar la membresía del usuario actual para determinar su rol
-      if (session?.user?.email) {
-        const userMembership = membershipsData.find(
-          (m) => m.user?.email === session.user.email && m.status === "accepted",
-        )
-        if (userMembership) {
-          setUserRole(userMembership.role)
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching data:", err)
-      setError("No se pudieron cargar los datos. Por favor, intenta de nuevo más tarde.")
-    } finally {
-      setLoading(false)
+  // Al cambiar de nivel se vuelve a la página 1: los totales son distintos y
+  // conservar la página actual dejaría la tabla fuera de rango.
+  React.useEffect(() => {
+    if (activeTab === "logs") {
+      fetchOrganizationLogs(1, pagination?.per_page, logLevel);
     }
-  }
+  }, [activeTab, logLevel]);
 
   const handleOrganizationUpdated = () => {
     if (params.id) {
-      fetchData(params.id as string)
+      fetchOrganization(params.id as string, { silent: true });
     }
-  }
+  };
 
-  if (status === "loading" || loading) {
+  if (authLoading || isRedirecting || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -90,12 +101,7 @@ export default function OrganizationPage() {
           <p>Cargando...</p>
         </div>
       </div>
-    )
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin")
-    return null
+    );
   }
 
   if (error) {
@@ -106,7 +112,7 @@ export default function OrganizationPage() {
           <div className="text-center py-12 text-red-500">{error}</div>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -123,7 +129,9 @@ export default function OrganizationPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink>{organization?.name || "Organización"}</BreadcrumbLink>
+              <BreadcrumbLink>
+                {organization?.name || "Organización"}
+              </BreadcrumbLink>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -131,7 +139,11 @@ export default function OrganizationPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">{organization?.name}</h1>
-            {organization?.description && <p className="text-muted-foreground mt-1">{organization.description}</p>}
+            {organization?.description && (
+              <p className="text-muted-foreground mt-1">
+                {organization.description}
+              </p>
+            )}
           </div>
           <div className="flex space-x-3">
             {organization && userRole && (
@@ -144,7 +156,11 @@ export default function OrganizationPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList>
             <TabsTrigger value="projects" className="flex items-center">
               <FolderKanban className="mr-2 h-4 w-4" />
@@ -154,6 +170,18 @@ export default function OrganizationPage() {
               <Users className="mr-2 h-4 w-4" />
               Miembros
             </TabsTrigger>
+            {canSeeLogs && (
+              <>
+                <TabsTrigger value="tokens" className="flex items-center">
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Tokens
+                </TabsTrigger>
+                <TabsTrigger value="logs" className="flex items-center">
+                  <Logs className="mr-2 h-4 w-4" />
+                  Logs
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="projects" className="space-y-6">
@@ -162,18 +190,63 @@ export default function OrganizationPage() {
               {(userRole === "owner" || userRole === "admin") && (
                 <CreateProjectForm
                   organizationId={params.id as string}
-                  onProjectCreated={() => fetchData(params.id as string)}
+                  onProjectCreated={() => fetchAllData(params.id as string)}
                 />
               )}
             </div>
 
-            <ProjectsGrid projects={projects} organizationId={params.id as string} />
+            <ProjectsGrid projects={projects} />
           </TabsContent>
           <TabsContent value="members">
             <OrganizationMembers organizationId={params.id as string} />
           </TabsContent>
+          {canSeeLogs && (
+            <TabsContent value="logs">
+              {/* Info y Error viven en la misma tabla Logs; el nivel se filtra en
+                  el backend, no en cliente, para que la paginación siga cuadrando. */}
+              <Tabs
+                value={logLevel}
+                onValueChange={(value) => setLogLevel(value as LogLevel)}
+                className="mb-4"
+              >
+                <TabsList>
+                  <TabsTrigger value="INFO">
+                    <Info className="h-4 w-4 mr-2" />
+                    Info
+                  </TabsTrigger>
+                  <TabsTrigger value="ERROR">
+                    <TriangleAlert className="h-4 w-4 mr-2" />
+                    Errores
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <LogsTable
+                title={logLevel === "ERROR" ? "Errores de la organización" : "Logs de la organización"}
+                logs={logs}
+                loading={logsLoading}
+                columns={logLevel === "ERROR" ? errorLogsColumns : defaultLogsColumns}
+                pagination={
+                  pagination
+                    ? {
+                        currentPage: pagination.page,
+                        totalPages: pagination.total_pages,
+                        total: pagination.total,
+                        perPage: pagination.per_page,
+                        onPageChange: goToPage,
+                        onPerPageChange: changePerPage,
+                      }
+                    : undefined
+                }
+              />
+            </TabsContent>
+          )}
+          {canSeeLogs && (
+            <TabsContent value="tokens">
+              <SystemTokensManager />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
-  )
+  );
 }

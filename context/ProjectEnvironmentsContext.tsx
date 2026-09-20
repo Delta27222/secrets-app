@@ -8,6 +8,11 @@ import { parseEnvText } from "@/utils/parseEnvText";
 import { useParams } from "next/navigation";
 import { useNotify } from "@/hooks";
 
+export type FetchEnvironmentsOptions = {
+  /** Si es true, no activa `loading` (evita ocultar la UI al refrescar tras guardar). */
+  silent?: boolean;
+};
+
 export type TProjectEnvironmentsContext = {
   environments: Environment[];
   setEnvironments: React.Dispatch<React.SetStateAction<Environment[]>>;
@@ -35,9 +40,11 @@ export type TProjectEnvironmentsContext = {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   dialogToOpen: string;
   setDialogToOpen: React.Dispatch<React.SetStateAction<string>>;
+  /** Slug del ambiente cuyo detalle se está cargando; bloquea otros "Ver Detalles" */
+  viewingEnvironmentSlug: string | null;
 
   // Functions
-  fetchEnvironments: () => Promise<void>;
+  fetchEnvironments: (options?: FetchEnvironmentsOptions) => Promise<void>;
   handleViewEnvironment: (environmentSlug: string) => Promise<void>;
   handleCopyAllSecrets: () => void;
   handleCopySecret: (key: string, value: string) => void;
@@ -67,9 +74,10 @@ export const ProjectEnvironmentsContext =
     setError: () => {},
     dialogToOpen: "",
     setDialogToOpen: () => {},
+    viewingEnvironmentSlug: null,
 
     // Functions
-    fetchEnvironments: async () => {},
+    fetchEnvironments: async (_?: FetchEnvironmentsOptions) => {},
     handleViewEnvironment: async (_: string) => {},
     handleCopyAllSecrets: () => {},
     handleCopySecret: (_: string, __: string) => {},
@@ -98,44 +106,64 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
   const [copiedSecrets, setCopiedSecrets] = React.useState<
     Record<string, boolean>
   >({});
-  const [dialogToOpen, setDialogToOpen] = React.useState<string>('');
+  const [dialogToOpen, setDialogToOpen] = React.useState<string>("");
+  const [viewingEnvironmentSlug, setViewingEnvironmentSlug] =
+    React.useState<string | null>(null);
+  const viewEnvironmentLockRef = React.useRef(false);
 
-  async function fetchEnvironments() {
-    try {
-      setLoading(true);
-      const data = await api.getProjectEnvironments(`${param.id}`);
-      setEnvironments(data.environments);
-    } catch (err) {
-      console.error("Error fetching environments:", err);
-      setError(
-        "No se pudieron cargar los ambientes. Por favor, intenta de nuevo más tarde."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetchEnvironments = React.useCallback(
+    async (options?: FetchEnvironmentsOptions) => {
+      const silent = options?.silent ?? false;
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        const data = await api.getProjectEnvironments(`${param.id}`);
+        setEnvironments(data.environments);
+      } catch (err) {
+        console.error("Error fetching environments:", err);
+        setError(
+          "No se pudieron cargar los ambientes. Por favor, intenta de nuevo más tarde."
+        );
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [api, param.id],
+  );
 
-  const handleViewEnvironment = async (environmentSlug: string) => {
-    try {
-      const environmentDetails = await api.getEnvironmentDetails(
-        param.id as string,
-        environmentSlug
-      );
-      setSelectedEnvironment(environmentDetails);
-      setEnvironmentDetailsOpen(true);
-      setShowSecrets(false);
-      setActiveTab("view");
-      setCopiedSecrets({});
-      setDialogToOpen('secrets');
-    } catch (err) {
-      console.error("Error fetching environment details:", err);
-      setError(
-        "No se pudieron cargar los detalles del ambiente. Por favor, intenta de nuevo más tarde."
-      );
-    }
-  };
+  const handleViewEnvironment = React.useCallback(
+    async (environmentSlug: string) => {
+      if (viewEnvironmentLockRef.current) return;
+      viewEnvironmentLockRef.current = true;
+      setViewingEnvironmentSlug(environmentSlug);
+      try {
+        const environmentDetails = await api.getEnvironmentDetails(
+          param.id as string,
+          environmentSlug
+        );
+        setSelectedEnvironment(environmentDetails);
+        setEnvironmentDetailsOpen(true);
+        setShowSecrets(false);
+        setActiveTab("view");
+        setCopiedSecrets({});
+        setDialogToOpen("secrets");
+      } catch (err) {
+        console.error("Error fetching environment details:", err);
+        setError(
+          "No se pudieron cargar los detalles del ambiente. Por favor, intenta de nuevo más tarde."
+        );
+      } finally {
+        viewEnvironmentLockRef.current = false;
+        setViewingEnvironmentSlug(null);
+      }
+    },
+    [api, param.id]
+  );
 
-  const handleCopyAllSecrets = () => {
+  const handleCopyAllSecrets = React.useCallback(() => {
     if (!selectedEnvironment) return;
 
     const allSecrets = Object.entries(selectedEnvironment.secrets || {})
@@ -157,9 +185,9 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         );
       }
     );
-  };
+  }, [selectedEnvironment, notify]);
 
-  const handleCopySecret = (key: string, value: string) => {
+  const handleCopySecret = React.useCallback((key: string, value: string) => {
     navigator.clipboard.writeText(value).then(
       () => {
         // Actualizar el estado para mostrar el ícono de confirmación
@@ -180,9 +208,9 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         notify("No se pudo copiar el valor al portapapeles.", "error");
       }
     );
-  };
+  }, [notify]);
 
-  const handleSaveEnvironment = async () => {
+  const handleSaveEnvironment = React.useCallback(async () => {
     if (!selectedEnvironment) return;
 
     try {
@@ -207,11 +235,11 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
         secrets: secrets,
       });
 
-      // Refrescar la lista de ambientes
-      fetchEnvironments();
-
-      // Cambiar a la pestaña de visualización
+      // Volver a «Ver variables» de inmediato con los datos ya guardados
       setActiveTab("view");
+
+      // Refrescar la lista en segundo plano (sin pantalla de carga)
+      await fetchEnvironments({ silent: true });
 
       notify(
         "Las variables de entorno han sido actualizadas correctamente.",
@@ -226,7 +254,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [selectedEnvironment, envText, api, fetchEnvironments, notify]);
 
   const value = React.useMemo(
     () => ({
@@ -252,6 +280,7 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
       setCopiedSecrets,
       dialogToOpen,
       setDialogToOpen,
+      viewingEnvironmentSlug,
       // Functions
       fetchEnvironments,
       handleViewEnvironment,
@@ -261,27 +290,19 @@ export function ProjectEnvironmentsProvider({ children }: Props) {
     }),
     [
       environments,
-      setEnvironments,
       loading,
-      setLoading,
       error,
-      setError,
       selectedEnvironment,
-      setSelectedEnvironment,
       showSecrets,
-      setShowSecrets,
       environmentDetailsOpen,
-      setEnvironmentDetailsOpen,
       activeTab,
-      setActiveTab,
       envText,
-      setEnvText,
       isSaving,
-      setIsSaving,
       copiedSecrets,
-      setCopiedSecrets,
       dialogToOpen,
-      setDialogToOpen,
+      viewingEnvironmentSlug,
+      fetchEnvironments,
+      handleViewEnvironment,
       handleCopyAllSecrets,
       handleCopySecret,
       handleSaveEnvironment,

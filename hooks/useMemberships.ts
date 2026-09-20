@@ -1,0 +1,71 @@
+import React from "react";
+import { MembershipsContext } from "@/context";
+
+export function useMemberships() {
+  const {
+    loading,
+    setLoading,
+    memberships,
+    setMemberships,
+    error,
+    setError,
+    userRole,
+    setUserRole,
+    organizationId,
+    setOrganizationId,
+    organization,
+    setOrganization,
+    projects,
+    setProjects,
+    members,
+    setMembers,
+    loadingOgr,
+    setLoadingOgr,
+    loadingProjects,
+    setLoadingProjects,
+    loadingMemberships,
+    setLoadingMemberships,
+
+    //Functions
+    fetchAllData,
+    fetchOrganizationMembers,
+    fetchUserRole,
+    fetchOrganization,
+    fetchUserOrganizationMembership,
+    fetchMyProjectsByOrganization,
+    fetchJustNeededData,
+  } = React.useContext(MembershipsContext);
+  return {
+    loading,
+    setLoading,
+    memberships,
+    setMemberships,
+    error,
+    setError,
+    userRole,
+    setUserRole,
+    organizationId,
+    setOrganizationId,
+    organization,
+    setOrganization,
+    projects,
+    setProjects,
+    members,
+    setMembers,
+    loadingOgr,
+    setLoadingOgr,
+    loadingProjects,
+    setLoadingProjects,
+    loadingMemberships,
+    setLoadingMemberships,
+
+    //Functions
+    fetchAllData,
+    fetchOrganizationMembers,
+    fetchUserRole,
+    fetchOrganization,
+    fetchUserOrganizationMembership,
+    fetchMyProjectsByOrganization,
+    fetchJustNeededData,
+  };
+}

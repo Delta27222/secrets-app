@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Layers, Plus } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,11 +9,16 @@ import { DialogContainer } from "./ui/V2/DialogContainer/DialogContainer";
 import { TabViewSecrets } from "./V2/Tabs/TabViewSecrets";
 import { TabEditSecrets } from "./V2/Tabs/TabEditSecrets";
 import { getEnvironmentBadge } from "./V2/Badge/EnviromentBadge";
-import { useProjectEnvironments } from "@/hooks";
+import { useProjectEnvironments, useProjectsInfo } from "@/hooks";
 import { EnvironmentCard } from "./V2/EnvironmentCard/EnvironmentCard";
 import { RenderLogoIcon, VercelLogoIcon } from "./ui/V2/icons";
-import { RenderSyncForm } from "./V2/Forms/RenderSyncForm";
-import { VercelSyncForm } from "./V2/Forms/VercelSyncForm";
+import { vercelDialogDescriptions } from "@/constants";
+import { CreateEnvironmentDialog } from "@/components/create-environment-dialog";
+
+const RenderSyncForm = dynamic(() => import("./V2/Forms/RenderSyncForm").then(mod => ({ default: mod.RenderSyncForm })), { ssr: false });
+const VercelSyncForm = dynamic(() => import("./V2/Forms/VercelSyncForm").then(mod => ({ default: mod.VercelSyncForm })), { ssr: false });
+const VercelSelectProjectTargetForm = dynamic(() => import("./V2/Forms/VercelSelectProjectTargetForm").then(mod => ({ default: mod.VercelSelectProjectTargetForm })), { ssr: false });
+const VercelConfirmSyncForm = dynamic(() => import("./V2/Forms/VercelConfirmSyncForm").then(mod => ({ default: mod.VercelConfirmSyncForm })), { ssr: false });
 
 interface ProjectEnvironmentsProps {
   projectId: string;
@@ -24,6 +30,7 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
     loading,
     error,
     selectedEnvironment,
+    setSelectedEnvironment,
     environmentDetailsOpen,
     setEnvironmentDetailsOpen,
     activeTab,
@@ -32,8 +39,28 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
     dialogToOpen,
     fetchEnvironments,
   } = useProjectEnvironments();
+  const { userProjectRole, userOrgRole } = useProjectsInfo();
+  const canManageEnvironments =
+    userProjectRole === "admin" && userOrgRole === "owner";
+
+  const handleEnvironmentDeleted = React.useCallback(
+    async (deletedId: string) => {
+      if (selectedEnvironment?._id === deletedId) {
+        setSelectedEnvironment(null);
+        setEnvironmentDetailsOpen(false);
+      }
+      await fetchEnvironments();
+    },
+    [
+      selectedEnvironment?._id,
+      setSelectedEnvironment,
+      setEnvironmentDetailsOpen,
+      fetchEnvironments,
+    ],
+  );
 
   React.useEffect(() => {
+    if (environments.length > 0) return;
     fetchEnvironments();
   }, [projectId]);
 
@@ -64,10 +91,12 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-semibold">Ambientes del Proyecto</h3>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Ambiente
-        </Button>
+        {canManageEnvironments ? (
+          <CreateEnvironmentDialog
+            projectId={projectId}
+            onEnvironmentCreated={fetchEnvironments}
+          />
+        ) : null}
       </div>
 
       {environments.length === 0 ? (
@@ -80,14 +109,26 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
             Crea un nuevo ambiente para comenzar a gestionar variables de
             entorno.
           </p>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> Crear Ambiente
-          </Button>
+          {canManageEnvironments ? (
+            <CreateEnvironmentDialog
+              projectId={projectId}
+              onEnvironmentCreated={fetchEnvironments}
+            >
+              <Button type="button">
+                <Plus className="mr-2 h-4 w-4" /> Crear Ambiente
+              </Button>
+            </CreateEnvironmentDialog>
+          ) : null}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {environments.map((environment, index) => (
-            <EnvironmentCard key={index} environment={environment} />
+          {environments.map((environment) => (
+            <EnvironmentCard
+              key={environment._id}
+              environment={environment}
+              canDeleteEnvironment={canManageEnvironments}
+              onEnvironmentDeleted={handleEnvironmentDeleted}
+            />
           ))}
         </div>
       )}
@@ -135,7 +176,9 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
         </DialogContainer>
       ) : null}
 
-      {dialogToOpen === "vercel" ? (
+      {dialogToOpen === "vercel" ||
+      dialogToOpen === "vercel_select_target" ||
+      dialogToOpen === "vercel_confirm_mismatches" ? (
         <DialogContainer
           dialogInfo={{
             title: "Sync to",
@@ -143,10 +186,17 @@ export function ProjectEnvironments({ projectId }: ProjectEnvironmentsProps) {
             isOpen: environmentDetailsOpen,
             setIsOpen: setEnvironmentDetailsOpen,
             className: "max-w-md",
+            description: vercelDialogDescriptions[dialogToOpen] || "",
           }}
           closeButton={false}
         >
-          <VercelSyncForm />
+          {dialogToOpen === "vercel" ? <VercelSyncForm /> : null}
+          {dialogToOpen === "vercel_select_target" ? (
+            <VercelSelectProjectTargetForm />
+          ) : null}
+          {dialogToOpen === "vercel_confirm_mismatches" ? (
+            <VercelConfirmSyncForm />
+          ) : null}
         </DialogContainer>
       ) : null}
     </div>

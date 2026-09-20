@@ -2,6 +2,8 @@
 
 Frontend en [Next.js](https://nextjs.org/) para el producto **tek-secrets**: gestión de proyectos, organizaciones y documentación, con autenticación vía **GitHub** ([NextAuth.js](https://next-auth.js.org/)) contra un API backend configurable.
 
+> 🚀 **Producción:** https://secrets-app-urgr.onrender.com/
+
 ## Requisitos
 
 - Node.js acorde con Next.js 15 (recomendado: LTS actual)

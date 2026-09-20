@@ -49,8 +49,14 @@ export interface User {
   email: string
   username?: string
   displayName?: string
-  createdAt: string | null
-  updatedAt: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export interface MinimalUser {
+  id: string
+  email: string
+  displayName?: string
 }
 
 export interface OrganizationMembershipDetail {
@@ -93,23 +99,45 @@ export interface ProjectDetail {
   updatedAt: string
 }
 
+export interface SecretsEncryptionMetadata {
+  key_version: number | null
+  encrypted_with_key_id: string | null
+  encrypted_at: string | null
+  requires_reencryption: boolean
+}
+
 export interface Environment {
   _id: string
   name: string
   slug: string
   project_id: string
   secrets: Record<string, string>
+  secrets_encryption?: SecretsEncryptionMetadata | null
   createdAt: string
   updatedAt: string
   render_token?: string;
   render_server_id?: string;
   vercel_token?: string;
-  vercel_server_id?: string;
+  vercel_project_id?: string;
+  vercel_target?: string[];
 }
 
 export interface EnvironmentsResponse {
   environments: Environment[]
   environments_count: number
+}
+
+/** Cuerpo para POST /v1/environments/ (clave `environment` en el JSON). */
+export interface EnvironmentCreatePayload {
+  project_id: string
+  name: string
+  slug: string
+  render_server_id?: string | null
+  render_token?: string | null
+  vercel_project_id?: string | null
+  vercel_token?: string | null
+  vercel_target?: string[] | null
+  secrets?: Record<string, string>
 }
 
 export interface ProjectMember {
@@ -134,6 +162,88 @@ export interface ProjectMember {
   createdAt: string
   updatedAt: string
 }
+
+export interface Log {
+  id: string
+  user: string | MinimalUser
+  action: string
+  date: string
+  targetType: string
+  idTarget: string
+  details: string
+  execution_time: string
+  // Resultado de la operación. Ausentes en los éxitos y en las filas anteriores
+  // al cambio de esquema, así que todo el consumo tiene que ser defensivo.
+  level?: "INFO" | "ERROR"
+  status_code?: number
+  error_type?: string
+  error_message?: string
+  client_ip?: string
+  user_agent?: string
+  method?: string
+  // Correlaciona las filas producidas por una misma petición.
+  request_id?: string
+}
+
+export interface ServiceToken {
+  _id: string
+  tokenId: string
+  name: string
+  description?: string
+  scopes: string[]
+  status: "active" | "revoked" | "expired" | "pending_rotation"
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+  expiresAt: string
+  lastUsedAt?: string
+  requestCount: number
+  projectId: string
+  rotated?: boolean
+  environmentId?: string
+}
+
+export interface ServiceTokenCreateResponse extends ServiceToken {
+  tokenSecret: string
+  warning: string
+}
+
+export interface ServiceTokenUsage {
+  requestCount: number
+  lastUsedAt?: string
+  lastUsedByIp?: string
+  requestsToday: number
+  requestsThisHour: number
+}
+
+export interface ServiceTokenRotateResponse {
+  status: string
+  new_token_id: string
+  new_token_secret: string
+  warning: string
+}
+
+// Token de sistema (global): igual que ServiceToken pero sin proyecto obligatorio
+export interface SystemToken extends Omit<ServiceToken, "projectId" | "environmentId"> {
+  projectId?: string | null
+}
+
+export interface SystemTokenCreateResponse extends SystemToken {
+  tokenSecret: string
+  warning: string
+}
+
+export interface PaginationMeta {
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: PaginationMeta
+}
 // Función para realizar peticiones autenticadas a la API
 export async function fetchWithAuth(
   url: string,
@@ -147,9 +257,6 @@ export async function fetchWithAuth(
     // ...(token ? { Authorization: `${tokenType} ${token}` } : {}),
     ...options.headers,
   }
-
-  console.log("Realizando petición a:", `${API_URL}${url}`)
-  console.log("Headers:", headers)
 
   return fetch(`${API_URL}${url}`, {
     ...options,
@@ -165,17 +272,25 @@ export class ApiClient {
   constructor(token?: string, tokenType?: string) {
     this.token = token
     this.tokenType = tokenType || "Bearer"
-    console.log("ApiClient inicializado con token:", token ? "presente" : "ausente")
   }
 
   setToken(token?: string, tokenType?: string) {
-    console.log("Actualizando token en ApiClient:", token ? "presente" : "ausente")
     this.token = token
     this.tokenType = tokenType || "Bearer"
   }
 
   hasToken(): boolean {
     return !!this.token
+  }
+
+  async getMinimalUsers(): Promise<MinimalUser[]> {
+    const response = await fetchWithAuth("/v1/users/minimal", this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getMinimalUsers:", response.status, errorText)
+      throw new Error(`Error al obtener usuarios minimales: ${response.status} ${errorText}`)
+    }
+    return response.json()
   }
 
   async getMyOrganizationMemberships(): Promise<OrganizationMembership[]> {
@@ -453,6 +568,45 @@ export class ApiClient {
     return response.json()
   }
 
+  async createEnvironment(payload: EnvironmentCreatePayload): Promise<Environment> {
+    const body: EnvironmentCreatePayload = {
+      project_id: payload.project_id,
+      name: payload.name,
+      slug: payload.slug,
+      render_server_id: payload.render_server_id ?? null,
+      render_token: payload.render_token ?? null,
+      vercel_project_id: payload.vercel_project_id ?? null,
+      vercel_token: payload.vercel_token ?? null,
+      vercel_target: payload.vercel_target ?? null,
+      secrets: payload.secrets ?? {},
+    }
+    const response = await fetchWithAuth(`/v1/environments/`, this.token, this.tokenType, {
+      method: "POST",
+      body: JSON.stringify({ environment: body }),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en createEnvironment:", response.status, errorText)
+      throw new Error(errorText || `Error al crear el ambiente: ${response.status}`)
+    }
+    return response.json()
+  }
+
+  async deleteEnvironment(environmentId: string): Promise<void> {
+    const response = await fetchWithAuth(
+      `/v1/environments/${environmentId}`,
+      this.token,
+      this.tokenType,
+      { method: "DELETE" },
+    )
+    if (response.ok) {
+      return
+    }
+    const errorText = await response.text()
+    console.error("Error en deleteEnvironment:", response.status, errorText)
+    throw new Error(errorText || `Error al eliminar el ambiente: ${response.status}`)
+  }
+
   async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
     console.log(`Obteniendo miembros del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
     const response = await fetchWithAuth(`/v1/projects/${projectId}/members`, this.token, this.tokenType)
@@ -619,7 +773,7 @@ export class ApiClient {
   }
 
 
-async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
+  async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
     console.log(`Sincronizando secretos con Render ambiente ${slug} del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
     const response = await fetchWithAuth(
       `/v1/sync/render/${projectId}/${slug}`,
@@ -637,7 +791,264 @@ async syncSecretsToRender(projectId: string, slug: string): Promise<any> {
     }
     return response.json()
   }
+
+  //Vercel API methods
+  async getVercelInfo(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo información de Vercel para el proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/projects/${projectId}/${slug}/vercel_info`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getVercelInfo:", response.status, errorText)
+      throw new Error(`Error al obtener información de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async updateVercelInfo(environmentId: string, vercel_project_id: string, vercel_token: string, vercel_target: string[]): Promise<any> {
+    console.log(`Actualizando información de Vercel ${environmentId} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(`/v1/environments/${environmentId}/vercel`, this.token, this.tokenType, {
+      method: "PATCH",
+      body: JSON.stringify({ vercel_data: { vercel_project_id, vercel_token, vercel_target } }),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en updateVercelInfo:", response.status, errorText)
+      throw new Error(`Error al actualizar información de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async syncSecretsToVercel(projectId: string, slug: string, remove_missing_secrets: boolean, target_name: string): Promise<any> {
+    console.log(`Sincronizando secretos con Vercel ambiente ${slug} del proyecto ${projectId} con token:`, this.token ? "presente" : "ausente")
+    const query = new URLSearchParams({
+      remove_missing_secrets: String(remove_missing_secrets !== false),
+      target_name
+    })
+    const response = await fetchWithAuth(
+      `/v1/sync/vercel/${projectId}/${slug}/?${query.toString()}`,
+      this.token,
+      this.tokenType,
+      {
+        method: 'POST',
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en syncSecretsToVercel:", response.status, errorText)
+      throw new Error(`Error al sincronizar secretos con Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getVercelMismatches(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo mismatches de Vercel para el proyecto ${projectId}, ambiente ${slug} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(
+      `/v1/vercel/${projectId}/${slug}/mismatches`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getVercelMismatches:", response.status, errorText)
+      throw new Error(`Error al obtener mismatches de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getVercelProjectTargets(projectId: string, slug: string): Promise<any> {
+    console.log(`Obteniendo targets de Vercel para el proyecto ${projectId}, ambiente ${slug} con token:`, this.token ? "presente" : "ausente")
+    const response = await fetchWithAuth(
+      `/v1/vercel/${projectId}/${slug}/targets`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getVercelTargets:", response.status, errorText)
+      throw new Error(`Error al obtener targets de Vercel: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  //LOGS
+  async getEnvironmentsLogs(
+    targetIds: string[],
+    page: number = 1,
+    perPage: number = 20,
+    level?: "INFO" | "ERROR"
+  ): Promise<PaginatedResponse<Log>> {
+    // Sin ambientes no hay nada que consultar. Si se llamara igual, la URL saldría
+    // sin `target_ids` y el backend devolvería los logs de TODA la instalación:
+    // los de otros proyectos y los errores HTTP sin target se colarían en la vista.
+    if (targetIds.length === 0) {
+      return { data: [], meta: { page, per_page: perPage, total: 0, total_pages: 0 } }
+    }
+
+    const targetParams = targetIds.map(id => `target_ids=${id}`).join('&')
+    const paginationParams = `page=${page}&per_page=${perPage}`
+    const levelParam = level ? `&level=${level}` : ""
+    const queryParams = `${targetParams}&${paginationParams}${levelParam}`
+
+    const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getEnvironmentsLogs:", response.status, errorText)
+      throw new Error(`Error al obtener logs de ambientes: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getAllLogs(page: number = 1, perPage: number = 20, level?: "INFO" | "ERROR"): Promise<PaginatedResponse<Log>> {
+    const levelParam = level ? `&level=${level}` : ""
+    const queryParams = `page=${page}&per_page=${perPage}${levelParam}`
+    const response = await fetchWithAuth(`/v1/logs/?${queryParams}`, this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Error en getAllLogs:", response.status, errorText)
+      throw new Error(`Error al obtener logs: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  // ===== SERVICE TOKENS =====
+
+  async createServiceToken(projectId: string, payload: {
+    name: string
+    description?: string
+    scopes: string[]
+    expiresInDays?: number
+    environmentId?: string
+  }): Promise<ServiceTokenCreateResponse> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens`,
+      this.token,
+      this.tokenType,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error creating token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async listServiceTokens(projectId: string): Promise<ServiceToken[]> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error listing tokens: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getServiceToken(tokenId: string, projectId: string): Promise<ServiceToken> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens/${tokenId}`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error getting token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async deleteServiceToken(tokenId: string, projectId: string, reason?: string): Promise<void> {
+    let url = `/v1/projects/${projectId}/tokens/${tokenId}`
+    if (reason) url += `&reason=${encodeURIComponent(reason)}`
+
+    const response = await fetchWithAuth(url, this.token, this.tokenType, {
+      method: "DELETE"
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error deleting token: ${response.status} ${errorText}`)
+    }
+  }
+
+  async rotateServiceToken(tokenId: string, projectId: string): Promise<ServiceTokenRotateResponse> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens/${tokenId}/rotate`,
+      this.token,
+      this.tokenType,
+      {
+        method: "POST"
+      }
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error rotating token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async getServiceTokenUsage(tokenId: string, projectId: string): Promise<ServiceTokenUsage> {
+    const response = await fetchWithAuth(
+      `/v1/projects/${projectId}/tokens/${tokenId}/usage`,
+      this.token,
+      this.tokenType
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error getting token usage: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  // ==========================================================================
+  // System tokens (globales, a nivel de organización)
+  // ==========================================================================
+
+  async createSystemToken(payload: {
+    name: string
+    description?: string
+    scopes: string[]
+    expires_in_days?: number
+  }): Promise<SystemTokenCreateResponse> {
+    const response = await fetchWithAuth("/v1/system-tokens", this.token, this.tokenType, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error creating system token: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async listSystemTokens(): Promise<SystemToken[]> {
+    const response = await fetchWithAuth("/v1/system-tokens", this.token, this.tokenType)
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error listing system tokens: ${response.status} ${errorText}`)
+    }
+    return response.json()
+  }
+
+  async deleteSystemToken(tokenId: string): Promise<void> {
+    const response = await fetchWithAuth(
+      `/v1/system-tokens/${tokenId}`,
+      this.token,
+      this.tokenType,
+      { method: "DELETE" }
+    )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Error deleting system token: ${response.status} ${errorText}`)
+    }
+  }
 }
+
+
 
 // Exportamos una instancia por defecto para uso general
 export const apiClient = new ApiClient()

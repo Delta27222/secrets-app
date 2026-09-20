@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
-import { useParams, useRouter } from "next/navigation"
+import React from "react"
+import dynamic from "next/dynamic"
+import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { useApi, useApiReady } from "@/components/api-provider"
-import type { ProjectDetail } from "@/lib/api"
+import { useApi } from "@/components/api-provider"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,74 +12,83 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Home, Settings, Layers, Users } from "lucide-react"
+import { Home, Layers, Users, Logs, Key } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ProjectEnvironments } from "@/components/project-environments"
-import { ProjectMembers } from "@/components/project-members"
-import { ProjectSettings } from "@/components/project-settings"
+import { useProjectsInfo, useProjectEnvironments, useRequireAuth } from "@/hooks"
+import { useLogs } from "@/hooks/useLogs"
+import { customEnvironmentsColumns } from "@/components/V2/Columns/EnvironmentsColumns"
+
+const ProjectEnvironments = dynamic(() => import("@/components/project-environments").then(mod => ({ default: mod.ProjectEnvironments })))
+const ProjectMembers = dynamic(() => import("@/components/project-members").then(mod => ({ default: mod.ProjectMembers })))
+const ProjectSettings = dynamic(() => import("@/components/project-settings").then(mod => ({ default: mod.ProjectSettings })))
+const LogsTable = dynamic(() => import("@/components/V2/Logs/LogsTable"))
+const ServiceTokensManager = dynamic(() => import("@/components/V2/ServiceTokens/ServiceTokensManager").then(mod => ({ default: mod.ServiceTokensManager })))
 
 export default function ProjectDetailPage() {
-  const { data: session, status } = useSession()
+  const { session, isLoading: authLoading, isRedirecting } = useRequireAuth()
   const params = useParams()
-  const router = useRouter()
   const api = useApi()
-  const apiReady = useApiReady()
-  const [project, setProject] = useState<ProjectDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("environments")
-  const [userProjectRole, setUserProjectRole] = useState<string | null>(null)
-  const [userOrgRole, setUserOrgRole] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState("environments")
 
+  const {
+    fetchProject,
+    error,
+    loading,
+    project,
+    userProjectRole,
+    userOrgRole,
+  } = useProjectsInfo()
+  const canSeeLogs = userProjectRole === "admin" || userOrgRole === "owner";
+  const {
+    logs,
+    loading: logsLoading,
+    fetchEnvironmentsLogs,
+    pagination,
+    goToPage,
+    changePerPage
+  } = useLogs()
 
-  useEffect(() => {
-    if (status === "authenticated" && params.id) {
+  React.useEffect(() => {
+    if (session?.accessToken && params.id) {
       api.setToken(session.accessToken)
       fetchProject(params.id as string)
     }
-  }, [status, params.id])
+  }, [session, params.id])
+
+  // Los ambientes definen el filtro de los logs y se leen AQUÍ, no dentro de
+  // LogsContext: este componente sí está bajo ProjectEnvironmentsProvider.
+  // Si el tab se abre antes de que carguen, el efecto se repite al llegar.
+  const { environments, fetchEnvironments } = useProjectEnvironments()
+
+  // El tab de Ambientes es quien los pedía. Si se entra directo a Logs, ese
+  // componente nunca se monta y no habría ids con los que filtrar.
+  React.useEffect(() => {
+    if (session?.accessToken && params.id && environments.length === 0) {
+      fetchEnvironments({ silent: true })
+    }
+  }, [session, params.id])
+
+  React.useEffect(() => {
+    if (activeTab === "logs") {
+      // Esta vista es estrictamente informativa: los fallos se consultan en el
+      // tab de Errores de la organización, no aquí.
+      fetchEnvironmentsLogs(
+        environments.map((environment) => environment._id),
+        pagination?.page,
+        pagination?.per_page,
+        "INFO"
+      )
+    }
+  }, [activeTab, environments])
 
   const handleProjectUpdated = () => {
     if (params.id) {
-      fetchProject(params.id as string)
+      fetchProject(params.id as string, { silent: true })
     }
   }
 
 
-  async function fetchProject(projectId: string) {
-    try {
-      setLoading(true)
-      const projectData = await api.getProject(projectId)
-      setProject(projectData)
-
-      // Obtener el rol del usuario en el proyecto
-      const projectMembers = await api.getProjectMembers(projectId)
-      if (session?.user?.email) {
-        const userMembership = projectMembers.find((m) => m.user.email === session.user.email)
-        if (userMembership) {
-          setUserProjectRole(userMembership.role)
-        }
-      }
-
-      // Obtener el rol del usuario en la organización
-      if (projectData.organization_id && session?.user?.email) {
-        const orgMembers = await api.getOrganizationMemberships(projectData.organization_id)
-        const userOrgMembership = orgMembers.find(
-          (m) => m.user?.email === session.user.email && m.status === "accepted",
-        )
-        if (userOrgMembership) {
-          setUserOrgRole(userOrgMembership.role)
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching project:", err)
-      setError("No se pudieron cargar los datos del proyecto. Por favor, intenta de nuevo más tarde.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (status === "loading" || loading ) {
+  if (authLoading || isRedirecting || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -90,11 +97,6 @@ export default function ProjectDetailPage() {
         </div>
       </div>
     )
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin")
-    return null
   }
 
   if (error) {
@@ -158,11 +160,48 @@ export default function ProjectDetailPage() {
               <Users className="mr-2 h-4 w-4" />
               Miembros
             </TabsTrigger>
+            {(userProjectRole === "admin" || userOrgRole === "owner" || userOrgRole === "admin") && (
+              <TabsTrigger value="service-tokens" className="flex items-center">
+                <Key className="mr-2 h-4 w-4" />
+                Tokens de Servicio
+              </TabsTrigger>
+            )}
+            {canSeeLogs ? (
+              <TabsTrigger value="logs" className="flex items-center">
+                <Logs className="mr-2 h-4 w-4" />
+                Logs
+              </TabsTrigger>
+            ) : null}
           </TabsList>
 
           <TabsContent value="environments">{project && <ProjectEnvironments projectId={project._id} />}</TabsContent>
 
           <TabsContent value="members">{project && <ProjectMembers projectId={project._id} />}</TabsContent>
+
+          {(userProjectRole === "admin" || userOrgRole === "owner" || userOrgRole === "admin") && (
+            <TabsContent value="service-tokens">
+              {project && <ServiceTokensManager projectId={project._id} />}
+            </TabsContent>
+          )}
+
+          <TabsContent value="logs">
+            {project && (
+              <LogsTable
+                title="Logs de ambientes"
+                logs={logs}
+                loading={logsLoading}
+                columns={customEnvironmentsColumns}
+                pagination={pagination ? {
+                  currentPage: pagination.page,
+                  totalPages: pagination.total_pages,
+                  total: pagination.total,
+                  perPage: pagination.per_page,
+                  onPageChange: goToPage,
+                  onPerPageChange: changePerPage,
+                } : undefined}
+              />
+            )}
+          </TabsContent>
         </Tabs>
       </main>
     </div>

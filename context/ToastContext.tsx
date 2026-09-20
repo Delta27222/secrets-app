@@ -34,7 +34,6 @@ export const ToastContext = React.createContext<IToastContext>({
 
 export function ToastContextProvider({ children }: ToastContextProvider) {
   const [alerts, setAlerts] = React.useState<TAlert[]>([]);
-  console.log("🚀 ~ ToastContextProvider ~ alerts:", alerts)
   interface NotifyFunction {
     (
       content: string,
