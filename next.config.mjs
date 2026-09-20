@@ -13,6 +13,9 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Requerido por el Dockerfile: empaqueta server.js + node_modules
+  // minimos en .next/standalone, sin esto la imagen de ECS no arranca.
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
