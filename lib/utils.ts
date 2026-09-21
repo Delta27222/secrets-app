@@ -7,7 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function isValidVercelCredentials(vercelProjectId: string, vercelToken: string): boolean {
   const isValidProjectId = vercelProjectId.startsWith('prj_') && vercelProjectId.length === 32;
-  const isValidToken = vercelToken.length === 24;
+  // const isValidToken = vercelToken.length === 24;
+  // console.log("🚀 ~ isValidVercelCredentials ~ isValidToken:", isValidToken)
 
-  return isValidProjectId && isValidToken;
+  return isValidProjectId;
 }
